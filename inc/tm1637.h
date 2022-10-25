@@ -17,8 +17,19 @@ namespace tm1637 {
     colon is bit 8 (msb) - but better to follow up with a call to setColon()
     */
 
-    class MGPIO;
-
+    /** SegmentMask can be used with bitwise OR to construct raw digits*/
+    typedef enum {
+        SegNone     = 0b00000000,
+        SegA        = 0b00000001,
+        SegB        = 0b00000010,
+        SegC        = 0b00000100,
+        SegD        = 0b00001000,
+        SegE        = 0b00010000,
+        SegF        = 0b00100000,
+        SegG        = 0b01000000,
+        SegColon    = 0b10000000
+    } SegmentMask;
+   
     /** GPIOLib determines the library used for GPIO access */
     typedef enum {
         GpioWiringPi,    // Use WiringPi with 'WiringPi' pin numbering
@@ -31,6 +42,7 @@ namespace tm1637 {
         RadixHex = 0x10
     } Radix;
 
+    class MGPIO;
     class Device {
     public:
         Device(int pinClk, int pinData, GPIOLib gpioLib = GpioWiringPiBCM);
@@ -43,17 +55,19 @@ namespace tm1637 {
         void setBrightnessPercent(int brightnessPercent);
         void clear();
         void setColon(bool showColon);
+        void showRawDigits(uint8_t d1, uint8_t d2, uint8_t d3, uint8_t d4);
         void showRawDigits(const uint8_t *digits);
         void showRawDigit(int pos, uint8_t digit);
+        void showIntegers(int int1, int int2, int int3, int int4);
         void showIntegers(const int *integers);
         void showInteger(int pos, int integer);
-        void showIntegerLiteral(int intLit, Radix radix);
+        void showIntegerLiteral(int intLit, Radix radix = RadixDecimal);
 
     protected:
         // Protocol
         void start() const;
         void stop() const;
-        inline void br() const { stop(); start(); }
+        void br() const;
         void writeByte(uint8_t data) const;
         void showCurrentData() const;
         void showDigitAtPos(int pos);

@@ -13,6 +13,13 @@ const uint8_t ADDR_FIXED        = 0x44;
 const uint8_t ADDR_C0H          = 0xc0; // + 0-3 for digits: C0H, C1H, C2H, C3H
 const uint8_t BRIGHTNESS_MAX    = 0x07;
 
+// Max integer literals for Device::showIntegerLiteral()
+const int MAX_INT_RADIX_DEC     = 9999;
+const int MAX_INT_RADIX_HEX     = 0xffff;
+
+// Clock signal
+const int64_t TM1637_DELAY_MS = 10;
+
 const uint8_t digits[] = {
         0b0111111, // 0
         0b0000110, // 1
@@ -35,7 +42,7 @@ const uint8_t COLON_MASK = 0x80;    // 0b10000000
 
 Device::Device(int pinClk, int pinData, GPIOLib gpioLib) 
     : m_data{0,0,0,0}
-    , m_brightness(BRIGHTNESS_MAX) {
+    , m_brightness(CMD_DISPLAY_ON | BRIGHTNESS_MAX) {
     switch (gpioLib) {
     case GpioWiringPi:
         m_gpio = new WiringPi(pinClk, pinData, false);
@@ -62,10 +69,10 @@ void Device::displayOff() {
 }
 
 void Device::setBrightnessPercent(int brightnessPercent) {
-    if (brightnessPercent < 0) {
-        m_brightness = 0;
-    } else if (brightnessPercent > 100) {
-        m_brightness = BRIGHTNESS_MAX;
+    if (brightnessPercent <= 0) {
+        m_brightness = CMD_DISPLAY_ON;
+    } else if (brightnessPercent >= 100) {
+        m_brightness = CMD_DISPLAY_ON | BRIGHTNESS_MAX;
     } else {
         m_brightness = CMD_DISPLAY_ON | (((int)((brightnessPercent * BRIGHTNESS_MAX / 100.0) + 0.5)) & 0x7);
     }
@@ -73,7 +80,10 @@ void Device::setBrightnessPercent(int brightnessPercent) {
 }
 
 void Device::clear() {
-    m_data[0] = m_data[1] = m_data[2] = m_data[3] = 0;
+    m_data[0] = 0;
+    m_data[1] = 0;
+    m_data[2] = 0;
+    m_data[3] = 0;
     showCurrentData();
 }
 
@@ -92,6 +102,14 @@ void Device::setColon(bool showColon) {
     showCurrentData();
 }
 
+void Device::showRawDigits(uint8_t d1, uint8_t d2, uint8_t d3, uint8_t d4) {
+    m_data[0] = d1;
+    m_data[1] = d2;
+    m_data[2] = d3;
+    m_data[3] = d4;
+    showCurrentData();
+}
+
 void Device::showRawDigits(const uint8_t *digits) {
     for (int i = 0; i < 4; i++) {
         m_data[i] = digits[i];
@@ -105,6 +123,11 @@ void Device::showRawDigit(int pos, uint8_t digit) {
     }
     m_data[pos] = digit;
     showDigitAtPos(pos);
+}
+
+void Device::showIntegers(int int1, int int2, int int3, int int4) {
+    int integers[] = {int1, int2, int3, int4};
+    showIntegers(integers);
 }
 
 void Device::showIntegers(const int *integers) {
@@ -132,10 +155,11 @@ void Device::showInteger(int pos, int integer) {
 }
 
 void Device::showIntegerLiteral(int intLit, Radix radix) {
-    if (intLit < 0 || intLit >= radix^4) {
+    const int &maxIntLit = (radix == RadixDecimal) ? MAX_INT_RADIX_DEC : MAX_INT_RADIX_HEX;
+    if (intLit < 0 || intLit > maxIntLit) {
         return;
     }
-    for (int i = 3; i >= 0; i++) {
+    for (int i = 3; i >= 0; i--) {
         m_data[i] = digits[(intLit % radix) & 0xf];
         intLit /= radix;
     }
@@ -145,33 +169,48 @@ void Device::showIntegerLiteral(int intLit, Radix radix) {
 void Device::start() const {
     m_gpio->setClock(PIN_HIGH);
     m_gpio->setData(PIN_HIGH);
+    m_gpio->delayMicroseconds(TM1637_DELAY_MS);
     m_gpio->setData(PIN_LOW);
+    m_gpio->delayMicroseconds(TM1637_DELAY_MS);
     m_gpio->setClock(PIN_LOW);
 }
 
 void Device::stop() const {
-    m_gpio->setClock(PIN_LOW);
     m_gpio->setData(PIN_LOW);
     m_gpio->setClock(PIN_HIGH);
+    m_gpio->delayMicroseconds(TM1637_DELAY_MS);
     m_gpio->setData(PIN_HIGH);
+    m_gpio->delayMicroseconds(TM1637_DELAY_MS);
+    m_gpio->setData(PIN_LOW);
+    m_gpio->delayMicroseconds(TM1637_DELAY_MS);
+    m_gpio->setClock(PIN_LOW);
+}
+
+void Device::br() const { 
+    stop();
+    start(); 
 }
 
 void Device::writeByte(uint8_t data) const {
     // Write bits in order LSB->MSB
     for (int i = 0; i < 8; i++) {
-        m_gpio->setClock(PIN_LOW);
+        m_gpio->setClock(PIN_LOW); // CLK falling edge for the previous iteration
+        m_gpio->delayMicroseconds(TM1637_DELAY_MS);
         m_gpio->setData(data & 0x1 ? PIN_HIGH : PIN_LOW);
         m_gpio->setClock(PIN_HIGH);
+        m_gpio->delayMicroseconds(TM1637_DELAY_MS);
         data >>= 1;
     }
-    // Wait for ACK
+    // This is the 8th bit CLK falling edge
     m_gpio->setClock(PIN_LOW);
-    m_gpio->setData(PIN_HIGH);
+    // Delay for ACK
+    m_gpio->delayMicroseconds(TM1637_DELAY_MS);
     m_gpio->setClock(PIN_HIGH);
-    while(m_gpio->getData() == PIN_HIGH) {
-        m_gpio->delayMicroseconds(1000);
-    }
- }
+    m_gpio->delayMicroseconds(TM1637_DELAY_MS);
+    m_gpio->setClock(PIN_LOW);
+   
+     m_gpio->setData(PIN_LOW);
+}
 
 void Device::showCurrentData() const {
     start();

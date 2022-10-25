@@ -21,6 +21,7 @@ set(lib_inc_base ./inc)
 # Library source code files
 set(lib_src_files
     "${lib_cpp_base}/tm1637.cpp"
+    "${lib_cpp_base}/gpioWiringPi.cpp"
 )
 
 # Library target. Use BUILD_SHARED_LIBS to detrmine STATIC vs SHARED

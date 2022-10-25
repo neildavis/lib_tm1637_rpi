@@ -11,12 +11,10 @@ namespace tm1637 {
         // API
         virtual void setClock(PinDigitalState state) override;
         virtual void setData(PinDigitalState state) override;
-        virtual PinDigitalState getData() override;
         virtual void delayMicroseconds(int usecs) override;
     private:
         int m_pinClk;
         int m_pinData;
-        int m_pinDataMode;
         bool m_bcm;
     };
 }

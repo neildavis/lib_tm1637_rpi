@@ -10,11 +10,10 @@ namespace tm1637 {
     */
     class MGPIO {
     public:
-        virtual ~MGPIO() = 0;
+        virtual ~MGPIO() {};
         // API
         virtual void setClock(PinDigitalState state) = 0;
         virtual void setData(PinDigitalState state) = 0;
-        virtual PinDigitalState getData() = 0;
         virtual void delayMicroseconds(int usecs) = 0;
     };
 }
