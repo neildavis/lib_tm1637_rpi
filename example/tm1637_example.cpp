@@ -1,4 +1,5 @@
 #include <tm1637.h>
+
 #include <chrono>
 #include <thread>
 
@@ -30,11 +31,12 @@ void fadeDisplay(Device &tm1637) {
 }
 
 int main() {
-    Device tm1637(3, 2, GpioWiringPiBCM);
+    Device tm1637(3,2);
+    printf("Press CTRL+C to exit\n");
     tm1637.clear();
 
     // Say 'Hello' in a few languages
-    tm1637.showRawDigits(DIGIT_H, DIGIT_I, 0, 0);
+    tm1637.showRawDigits(0, DIGIT_H, DIGIT_I, 0);
     fadeDisplay(tm1637);
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     tm1637.showRawDigits(DIGIT_H, DIGIT_O, DIGIT_L, DIGIT_A);
@@ -51,18 +53,23 @@ int main() {
     // Segment animation
     tm1637.clear();
     tm1637.setBrightnessPercent(100);
-    for (int dig = 0; dig < 4; dig++) {
-        for (int seg = 0; seg < 7; seg++) {
-            uint8_t digit = 1 << seg;
-            tm1637.showRawDigit(dig, digit);
+    for (int i = 0; i < 4; i++) {
+        for (int seg = 0; seg < 6; seg++) {
+            for (int dig = 0; dig < 4; dig++) {
+                uint8_t digit = 1 << seg;
+                tm1637.showRawDigit(dig, digit);
+            }  
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
         }
-        tm1637.showRawDigit(dig, 0);
     }
 
     // Blink the colon with PWM
     tm1637.clear();
     tm1637.setColon(true);
+    for (int dig = 0; dig < 4; dig++) {
+        uint8_t digit = SegG | SegColon;
+        tm1637.showRawDigit(dig, digit);
+    }  
     for (int i = 0; i < 4; i++) {
         raiseDisplay(tm1637);
         fadeDisplay(tm1637);
@@ -71,7 +78,7 @@ int main() {
     // Numeric literal
     tm1637.clear();
     tm1637.setBrightnessPercent(100);
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 4; i++) {
         tm1637.showIntegerLiteral(1637);
         tm1637.setColon(i % 2 == 0);
         fadeDisplay(tm1637);

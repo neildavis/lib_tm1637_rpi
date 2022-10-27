@@ -1,3 +1,5 @@
+#pragma once
+
 namespace tm1637 {
 
     typedef enum {
@@ -10,7 +12,7 @@ namespace tm1637 {
     */
     class MGPIO {
     public:
-        virtual ~MGPIO() {};
+        virtual ~MGPIO() = default;
         // API
         virtual void setClock(PinDigitalState state) = 0;
         virtual void setData(PinDigitalState state) = 0;
