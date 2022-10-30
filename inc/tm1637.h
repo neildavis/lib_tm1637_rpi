@@ -30,6 +30,16 @@ namespace tm1637 {
         SegColon    = 0b10000000
     } SegmentMask;
    
+    /** GPIOLib determines the library used for GPIO access */
+    typedef enum {
+        /**  Use GPIOD (native linux character device) via libgpiod */
+        GpioGPIOD,
+        /** Use WiringPi with 'WiringPi' pin numbering */  
+        GpioWiringPi,
+        /** Use WiringPi with 'Broadcom (BCM)' pin numbering */
+        GpioWiringPiBCM,
+    } GPIOLib;
+
     /** Radix determines the radix when displaying integer literals */
     typedef enum {
         RadixDecimal = 10,
@@ -41,6 +51,7 @@ namespace tm1637 {
     class Device {
     public:
         Device(int pinClk, int pinData);
+        Device(int pinClk, int pinData, GPIOLib gpioLib);
         virtual ~Device();
         Device(const Device &device) = delete;   // copying is not supported
         Device& operator=(const Device &device) = delete;   // assignment is not supported

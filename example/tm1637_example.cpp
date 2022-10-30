@@ -30,8 +30,17 @@ void fadeDisplay(Device &tm1637) {
     tm1637.displayOff();
 }
 
+// If no GPIO lib is declared on command line, use GPIOD by default
+#if !defined(GPIO_GPIOD) && !defined(GPIO_WIRINGPI)
+#define GPIO_GPIOD 
+#endif
+
 int main() {
+#if defined(GPIO_GPIOD)
     Device tm1637(3,2);
+#elif defined (GPIO_WIRINGPI)
+    Device tm1637(3, 2, GpioWiringPiBCM);
+#endif
     printf("Press CTRL+C to exit\n");
     tm1637.clear();
 

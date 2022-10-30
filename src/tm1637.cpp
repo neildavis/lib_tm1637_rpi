@@ -2,13 +2,6 @@
 #include "gpioWiringPi.h"
 #include "gpioGPIOD.h"
 
-#include <stdexcept>
-
-/* Default to use gpiod if no pre-processor directive is already set */
-#if !defined(USE_GPIOD) && !defined(USE_WIRINGPI)
-#define USE_GPIOD
-#endif
-
 using namespace tm1637;
 
 const uint8_t CMD_DISPLAY_OFF   = 0x80;
@@ -45,16 +38,25 @@ const uint8_t digits[] = {
 };
 const uint8_t COLON_MASK = 0x80;    // 0b10000000
 
-Device::Device(int pinClk, int pinData) 
+Device::Device(int pinClk, int pinData) : Device (pinClk, pinData, GpioGPIOD) {
+}
+
+Device::Device(int pinClk, int pinData, GPIOLib gpioLib)
     : m_data{0,0,0,0}
     , m_brightness(CMD_DISPLAY_ON | BRIGHTNESS_MAX) {
-#if defined(USE_GPIOD)
-        m_gpio = new GPIOD(pinClk, pinData);
-#elif defined(USE_WIRINGPI)
+    switch (gpioLib) {
+    case GpioWiringPi:
+        m_gpio = new WiringPi(pinClk, pinData, false);
+        break;
+    case GpioWiringPiBCM:
         m_gpio = new WiringPi(pinClk, pinData, true);
-#else 
-        throw std::runtime_error("GPIO lib not specified. #define USE_GPIOD or USE_WIRINGPI before including \"tm1637.h\"");
-#endif
+        break;
+    case GpioGPIOD:
+    default:
+        m_gpio = new GPIOD(pinClk, pinData);
+        break;
+    }
+
     m_gpio->setClock(PIN_LOW);
     m_gpio->setData(PIN_LOW);
 }
