@@ -38,6 +38,8 @@ namespace tm1637 {
         GpioWiringPi,
         /** Use WiringPi with 'Broadcom (BCM)' pin numbering */
         GpioWiringPiBCM,
+        /** Use pigpio daemon (pigpiod) via libpigpiod_if2 */
+        GpioPigpioDaemon,
     } GPIOLib;
 
     /** Radix determines the radix when displaying integer literals */

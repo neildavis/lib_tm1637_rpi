@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <thread>
+#include <iostream>
 
 using namespace tm1637;
 
@@ -31,17 +32,14 @@ void fadeDisplay(Device &tm1637) {
 }
 
 // If no GPIO lib is declared on command line, use GPIOD by default
-#if !defined(GPIO_GPIOD) && !defined(GPIO_WIRINGPI)
-#define GPIO_GPIOD 
+#if !defined(GPIO_LIB)
+#define GPIO_LIB GpioGPIOD
 #endif
 
 int main() {
-#if defined(GPIO_GPIOD)
-    Device tm1637(3,2);
-#elif defined (GPIO_WIRINGPI)
-    Device tm1637(3, 2, GpioWiringPiBCM);
-#endif
-    printf("Press CTRL+C to exit\n");
+    std::cout << "Using GPIO lib " << GPIO_LIB << std::endl;
+    Device tm1637(3, 2, GPIO_LIB);
+    std::cout << "Press CTRL+C to exit" << std::endl;
     tm1637.clear();
 
     // Say 'Hello' in a few languages
