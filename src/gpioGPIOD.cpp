@@ -11,17 +11,24 @@ const char *kGpiodLibSoName = "libgpiod.so.2";
 const char *kDefaultGpioChipName = "gpiochip0";
 const char *kLineConsumer = "libTM1637Pi";
 
-GPIOD::GPIOD(int pinClk, int pinData) {
+GPIOD::GPIOD(int pinClk, int pinData) :
+    m_pinClk(pinClk),
+    m_pinData(pinData) {
+}
+
+
+void GPIOD::initialize() {
     dynLoadGpiodLib();
 
     m_chip = m_gpiod_chip_open_by_name(kDefaultGpioChipName);
-    m_lineClk = m_gpiod_chip_get_line(m_chip, pinClk);
-    m_lineData = m_gpiod_chip_get_line(m_chip, pinData);
+    m_lineClk = m_gpiod_chip_get_line(m_chip, m_pinClk);
+    m_lineData = m_gpiod_chip_get_line(m_chip, m_pinData);
     m_gpiod_line_request_output(m_lineClk,  kLineConsumer, 0); // open CLK as LOW
     m_gpiod_line_request_output(m_lineData, kLineConsumer, 0); // open DIO as LOW
+
 }
 
-GPIOD::~GPIOD() {
+void GPIOD::deinitialize() {
     m_gpiod_line_release(m_lineClk);
     m_gpiod_line_release(m_lineData);
     m_gpiod_chip_close(m_chip);

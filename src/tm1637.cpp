@@ -60,12 +60,13 @@ Device::Device(int pinClk, int pinData, GPIOLib gpioLib)
         m_gpio = new GPIOD(pinClk, pinData);
         break;
     }
-
+    m_gpio->initialize();
     m_gpio->setClock(PIN_LOW);
     m_gpio->setData(PIN_LOW);
 }
 
 Device::~Device() {
+    m_gpio->deinitialize();
     delete m_gpio;
 }
 

@@ -14,6 +14,9 @@ WiringPi::WiringPi(int pinClk, int pinData, bool useBCM)
     : m_pinClk(pinClk)
     , m_pinData(pinData)
     , m_bcm(useBCM) {
+}
+
+void WiringPi::initialize() {
     dynLoadWiringPiLib();
 
     if (m_bcm) {
@@ -25,7 +28,7 @@ WiringPi::WiringPi(int pinClk, int pinData, bool useBCM)
     m_pinMode(m_pinData, OUTPUT);
 }
 
-WiringPi::~WiringPi() {
+void WiringPi::deinitialize() {
     dlclose(m_libHandle);
 }
 
@@ -55,4 +58,3 @@ void WiringPi::dynLoadWiringPiLib() {
     m_delayMicroseconds = reinterpret_cast<void(*)(unsigned int)>(dlsym(m_libHandle, "delayMicroseconds"));
     if (NULL == m_delayMicroseconds) { throw std::runtime_error(dlerror()); }
 }
- 

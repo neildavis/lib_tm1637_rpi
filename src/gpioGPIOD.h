@@ -8,8 +8,9 @@ namespace tm1637 {
     class GPIOD : public MGPIO {
     public:
         GPIOD(int pinClk, int pinData);
-        virtual ~GPIOD();
         // API
+        virtual void initialize() override;
+        virtual void deinitialize() override;
         virtual void setClock(PinDigitalState state) override;
         virtual void setData(PinDigitalState state) override;
         virtual void delayMicroseconds(int usecs) override;
@@ -24,6 +25,8 @@ namespace tm1637 {
         int (*m_gpiod_line_request_output)(gpiod_line *line, const char *consumer, int default_val);
         int (*m_gpiod_line_set_value)(gpiod_line *line, int value);
     private:
+        int m_pinClk;
+        int m_pinData;
         void *m_libHandle;
         gpiod_line *m_lineClk;
         gpiod_line *m_lineData;

@@ -14,6 +14,8 @@ namespace tm1637 {
     public:
         virtual ~MGPIO() = default;
         // API
+        virtual void initialize() = 0;
+        virtual void deinitialize() = 0;
         virtual void setClock(PinDigitalState state) = 0;
         virtual void setData(PinDigitalState state) = 0;
         virtual void delayMicroseconds(int usecs) = 0;
