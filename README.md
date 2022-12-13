@@ -10,7 +10,7 @@ to provide a ***runtime choice*** of GPIO library.
 The currently supported GPIO libraries include:
 
 * [`libgpiod`](https://git.kernel.org/pub/scm/libs/libgpiod/libgpiod.git/)
-* [`pigpio`](https://abyz.me.uk/rpi/pigpio/) (via [`pigpiod`](https://abyz.me.uk/rpi/pigpio/pigpiod.html) daemon)
+* [`pigpio`](https://abyz.me.uk/rpi/pigpio/) (Both 'library' and '[`pigpiod`](https://abyz.me.uk/rpi/pigpio/pigpiod.html)' interfaces)
 * [`wiringPi`](https://github.com/WiringPi/WiringPi)
 
 By default, `libgpiod` will be used.
@@ -45,11 +45,14 @@ sudo apt install gpiod
 
 ### pigpio / pigpiod
 
-If you wish to use `pigpiod` for GPIO access, you may need to install the `pigpiod` package
-(although it may also be included by default in your OS image):
+If you wish to use the `pigpio` library and/or `pigpiod` for GPIO access, you may need to install the `pigpiod` package
+(although it may already be included by default in your OS image):
 ```sh
 sudo apt install pigpiod
 ```
+
+When using the `pigpio` 'library interface' your app will need to run as the '`root`' user (or under '`sudo`')
+to have permission to access the GPIO pins. You must also ensure that `pigpiod` is **NOT** currently running.
 
 When using the `pigpiod` daemon, the library will connect to the daemon on `localhost` by default.
 If you wish to connect to a daemon on a different interface (or machine) you can do this by setting
@@ -143,6 +146,7 @@ See the [example](./example/tm1637_example.cpp) code in the `example` directory 
 cd example
 ./build_for_gpiod.sh
 # or ./build_for_wiringpi.sh 
+# or ./build_for_pigpio_interface.sh 
 # or ./build_for_pigpio_daemon.sh 
 ./tm1637_example 
 ```
