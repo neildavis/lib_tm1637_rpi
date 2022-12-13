@@ -5,16 +5,21 @@
 
 using namespace tm1637;
 
+
+const char *kPigpiodLibSoName = "libpigpiod_if2.so.1";
+
 PigpioDaemon::PigpioDaemon(int pinClk, int pinData) :
     PigpioBase(pinClk, pinData) {
 }
 
 void PigpioDaemon::dynLoadLib() {
-    PigpioBase::dynLoadLib();
+    m_libHandle = dlopen(kPigpiodLibSoName, RTLD_LAZY);
+    m_time_sleep = reinterpret_cast<void (*)(double)>(dlsym(m_libHandle, "time_sleep"));
+    if (NULL == m_time_sleep) { throw std::runtime_error(dlerror()); }
     m_pigpio_start = reinterpret_cast<int (*)(const char*, const char*)>(dlsym(m_libHandle, "pigpio_start"));
     if (NULL == m_pigpio_start) { throw std::runtime_error(dlerror()); }
     m_pigpio_stop = reinterpret_cast<void (*)(int)>(dlsym(m_libHandle, "pigpio_stop"));
-    if (NULL == m_pigpio_start) { throw std::runtime_error(dlerror()); }
+    if (NULL == m_pigpio_stop) { throw std::runtime_error(dlerror()); }
     m_set_mode = reinterpret_cast<int (*)(int, unsigned, unsigned)>(dlsym(m_libHandle, "set_mode"));
     if (NULL == m_set_mode) { throw std::runtime_error(dlerror()); }
     m_gpio_write = reinterpret_cast<int (*)(int, unsigned, unsigned)>(dlsym(m_libHandle, "gpio_write"));

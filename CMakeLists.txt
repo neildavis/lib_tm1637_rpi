@@ -24,6 +24,7 @@ set(lib_src_files
     "${lib_cpp_base}/gpioGPIOD.cpp"
     "${lib_cpp_base}/gpioWiringPi.cpp"
     "${lib_cpp_base}/gpioPigpioBase.cpp"
+    "${lib_cpp_base}/gpioPigpioInterface.cpp"
     "${lib_cpp_base}/gpioPigpioDaemon.cpp"
 )
 

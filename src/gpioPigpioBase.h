@@ -3,13 +3,11 @@
 #include "gpio.h"
 #include <pigpiod_if2.h>
 
-extern const char *kPigpiodLibSoName;
-
-
 namespace tm1637 {
     
     class PigpioBase : public MGPIO {
     public:
+        ~PigpioBase();
         // API
         virtual void initialize() override;
         virtual void deinitialize() override;
@@ -21,7 +19,7 @@ namespace tm1637 {
         // Internal helper functions
         void throwLibpigpiodReturnValue(const char *fn, int ret);
         // Internal template methods - overridden by subclasses
-        virtual void dynLoadLib();  // subclasses MUST super call
+        virtual void dynLoadLib() = 0;
         virtual void initializeGpio() = 0;
         virtual void deinitializeGpio() = 0;
         virtual void setPinMode(unsigned pinNum, unsigned mode) = 0;

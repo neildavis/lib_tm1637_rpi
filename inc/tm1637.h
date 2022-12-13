@@ -38,6 +38,8 @@ namespace tm1637 {
         GpioWiringPi,
         /** Use WiringPi with 'Broadcom (BCM)' pin numbering */
         GpioWiringPiBCM,
+        /** Use pigpio C interface via libpigpiod_if2 */
+        GpioPigpioInterface,
         /** Use pigpio daemon (pigpiod) via libpigpiod_if2 */
         GpioPigpioDaemon,
     } GPIOLib;

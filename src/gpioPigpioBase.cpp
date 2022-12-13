@@ -6,11 +6,13 @@
 
 using namespace tm1637;
 
-const char *kPigpiodLibSoName = "libpigpiod_if2.so.1";
-
 PigpioBase::PigpioBase(int pinClk, int pinData) : 
     m_pinClk(pinClk),
     m_pinData(pinData) {
+}
+
+PigpioBase::~PigpioBase() {
+    dlclose(m_libHandle);
 }
 
 void PigpioBase::initialize() {
@@ -34,12 +36,6 @@ void PigpioBase::setData(PinDigitalState state) {
 
 void PigpioBase::delayMicroseconds(int usecs) {
     m_time_sleep(usecs / 1000000);
-}
-
-void PigpioBase::dynLoadLib() {
-    m_libHandle = dlopen(kPigpiodLibSoName, RTLD_LAZY);
-    m_time_sleep = reinterpret_cast<void (*)(double)>(dlsym(m_libHandle, "time_sleep"));
-    if (NULL == m_time_sleep) { throw std::runtime_error(dlerror()); }
 }
 
 void PigpioBase::throwLibpigpiodReturnValue(const char *fn, int ret) {

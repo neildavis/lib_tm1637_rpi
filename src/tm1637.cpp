@@ -1,6 +1,7 @@
 #include "tm1637.h"
 #include "gpioWiringPi.h"
 #include "gpioGPIOD.h"
+#include "gpioPigpioInterface.h"
 #include "gpioPigpioDaemon.h"
 
 using namespace tm1637;
@@ -51,6 +52,9 @@ Device::Device(int pinClk, int pinData, GPIOLib gpioLib)
         break;
     case GpioWiringPiBCM:
         m_gpio = new WiringPi(pinClk, pinData, true);
+        break;
+    case GpioPigpioInterface:
+        m_gpio = new PigpioInterface(pinClk, pinData);
         break;
     case GpioPigpioDaemon:
         m_gpio = new PigpioDaemon(pinClk, pinData);
