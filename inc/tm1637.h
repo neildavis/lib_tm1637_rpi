@@ -79,13 +79,15 @@ namespace tm1637 {
         void stop() const;
         void br() const;
         void writeByte(uint8_t data) const;
-        void showCurrentData() const;
+        void showCurrentData();
         void showDigitAtPos(int pos);
+        void applyColonMask();
 
         
     protected:
         MGPIO *m_gpio;
         uint8_t m_data[4];
         uint8_t m_brightness;
+        bool m_showColon;
     };
 }

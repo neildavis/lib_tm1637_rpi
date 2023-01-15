@@ -45,7 +45,8 @@ Device::Device(int pinClk, int pinData) : Device (pinClk, pinData, GpioGPIOD) {
 
 Device::Device(int pinClk, int pinData, GPIOLib gpioLib)
     : m_data{0,0,0,0}
-    , m_brightness(CMD_DISPLAY_ON | BRIGHTNESS_MAX) {
+    , m_brightness(CMD_DISPLAY_ON | BRIGHTNESS_MAX),
+    m_showColon(false) {
     switch (gpioLib) {
     case GpioWiringPi:
         m_gpio = new WiringPi(pinClk, pinData, false);
@@ -99,17 +100,7 @@ void Device::clear() {
 }
 
 void Device::setColon(bool showColon) {
-    if (showColon) {
-        m_data[0] |= COLON_MASK;
-        m_data[1] |= COLON_MASK;
-        m_data[2] |= COLON_MASK;
-        m_data[3] |= COLON_MASK;
-    } else {
-        m_data[0] &= ~COLON_MASK;
-        m_data[1] &= ~COLON_MASK;
-        m_data[2] &= ~COLON_MASK;
-        m_data[3] &= ~COLON_MASK;
-    }
+    m_showColon = showColon;
     showCurrentData();
 }
 
@@ -223,7 +214,8 @@ void Device::writeByte(uint8_t data) const {
      m_gpio->setData(PIN_LOW);
 }
 
-void Device::showCurrentData() const {
+void Device::showCurrentData() {
+    applyColonMask();
     start();
     writeByte(ADDR_AUTO);
     br();
@@ -240,6 +232,10 @@ void Device::showDigitAtPos(int pos) {
     if (pos < 0 || pos > 3) {
         return;
     }
+    if (1 == pos) {
+        // Retain colon mask
+        applyColonMask();
+    }
     start();
     writeByte(ADDR_FIXED);
     br();
@@ -248,4 +244,12 @@ void Device::showDigitAtPos(int pos) {
     br();
     writeByte(m_brightness);
     stop();
+}
+
+void Device::applyColonMask() {
+    if (m_showColon) {
+        m_data[1] |= COLON_MASK;
+    } else {
+        m_data[1] &= ~COLON_MASK;
+    }
 }
