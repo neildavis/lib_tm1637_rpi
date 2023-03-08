@@ -19,23 +19,19 @@ set(lib_cpp_base ./src)
 set(lib_inc_base ./inc)
 
 # Library source core code files
-set(lib_src_files
-    "${lib_cpp_base}/tm1637.cpp"
-    "${lib_cpp_base}/gpioGPIOD.cpp"
-    "${lib_cpp_base}/gpioWiringPi.cpp"
-    "${lib_cpp_base}/gpioPigpioBase.cpp"
-    "${lib_cpp_base}/gpioPigpioInterface.cpp"
-    "${lib_cpp_base}/gpioPigpioDaemon.cpp"
-)
+file(GLOB_RECURSE lib_src_files "${lib_cpp_base}/*.cpp")
+
+# # Public header files
+file(GLOB_RECURSE public_inc_files "${lib_inc_base}/*.h")
 
 # Library target
 add_library(${lib-name} ${lib_src_files})
 
 # Include dirs
-target_include_directories(${lib-name} PRIVATE ${lib_inc_base})
+target_include_directories(${lib-name} PUBLIC ${lib_inc_base})
 target_include_directories(${lib-name} PRIVATE ${lib_cpp_base})
 # Public header for the library (installed to sys include)
-set_target_properties(${lib-name} PROPERTIES PUBLIC_HEADER ${lib_inc_base}/tm1637.h)
+set_target_properties(${lib-name} PROPERTIES PUBLIC_HEADER "${public_inc_files}")
 set_target_properties(${lib-name} PROPERTIES VERSION ${PROJECT_VERSION})
 # SOVERSION
 set_target_properties(${lib-name} PROPERTIES SOVERSION 1)

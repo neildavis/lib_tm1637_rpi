@@ -1,19 +1,16 @@
 #include <tm1637.h>
+#include <tm1637_digits.h>
+#include <tm1637_say.h>
 
 #include <chrono>
 #include <thread>
 #include <iostream>
+#include <memory>
+#include <string>
 
 using namespace tm1637;
 
 #define max(a, b) ((a) < (b) ? (b) : (a))
-
-const uint8_t DIGIT_A = 0b1110111;
-const uint8_t DIGIT_C = 0b0111001;
-const uint8_t DIGIT_H = 0b1110110;
-const uint8_t DIGIT_I = 0b0110000;
-const uint8_t DIGIT_L = 0b0111000;
-const uint8_t DIGIT_O = 0b0111111;
 
 void raiseDisplay(Device &tm1637) {
     tm1637.displayOff();
@@ -36,8 +33,19 @@ void fadeDisplay(Device &tm1637) {
 #define GPIO_LIB GpioGPIOD
 #endif
 
+void say_something() {
+    auto tm1637 = std::unique_ptr<Device>(new Device(3,2, GPIO_LIB));
+    std::string str = "01234567890aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ -_?";
+    Sayer sayer(tm1637, str);
+    sayer.begin();
+    while (sayer.next()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(250));
+    }
+}
+
 int main() {
     std::cout << "Using GPIO lib " << GPIO_LIB << std::endl;
+    say_something();
     Device tm1637(3, 2, GPIO_LIB);
     std::cout << "Press CTRL+C to exit" << std::endl;
     tm1637.clear();
