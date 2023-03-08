@@ -1,6 +1,6 @@
 #include <tm1637.h>
 #include <tm1637_digits.h>
-#include <tm1637_say.h>
+#include <tm1637_sayer.h>
 
 #include <chrono>
 #include <thread>
@@ -35,7 +35,7 @@ void fadeDisplay(Device &tm1637) {
 
 void say_something() {
     auto tm1637 = std::unique_ptr<Device>(new Device(3,2, GPIO_LIB));
-    std::string str = "01234567890aAbBcCdDeEfFgGhHiIjJkKlLmMnNoOpPqQrRsStTuUvVwWxXyYzZ -_?";
+    std::string str = "SEGA TURbO";
     Sayer sayer(tm1637, str);
     sayer.begin();
     while (sayer.next()) {
