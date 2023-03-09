@@ -8,10 +8,14 @@
 
 namespace po = boost::program_options;
 
-// If no GPIO lib is declared on command line, use GPIOD by default
-#if !defined(GPIO_LIB)
-#define GPIO_LIB GpioGPIOD
-#endif
+tm1637::GPIOLib gpioLibrary(std::string &str) {
+    if (str == "GpioWiringPi") return tm1637::GpioWiringPi;
+    if (str == "GpioWiringPiBCM") return tm1637::GpioWiringPiBCM;
+    if (str == "GpioPigpioInterface") return tm1637::GpioPigpioInterface;
+    if (str == "GpioPigpioDaemon") return tm1637::GpioPigpioDaemon;
+    str = "GpioGPIOD";
+    return tm1637::GpioGPIOD;
+}
 
 int main(int argc, char**argv) {
     po::options_description user_options(
@@ -24,8 +28,10 @@ int main(int argc, char**argv) {
         ("help,h", "Show usage information")
         ("scl,c", po::value<int>()->default_value(3), "GPIO pin to use for clock")
         ("sda,d", po::value<int>()->default_value(2), "GPIO pin to use for data")
+        ("gpio-lib,g", po::value<std::string>()->default_value("GpioGPIOD"), "GPIO library")
         ("delay-time,t", po::value<int>()->default_value(250), "Delay time between characters (ms)")
         ("count,n", po::value<int>()->default_value(1), "Repeat the message <arg> number of times")
+        ("verbose,v", po::value<bool>()->default_value(false)->implicit_value(true), "Enable/Disable verbose output")
     ;
     po::options_description hidden_options("Hidden options");
     hidden_options.add_options()
@@ -52,10 +58,20 @@ int main(int argc, char**argv) {
     int pinSCL = vm["scl"].as<int>();
     int delay_ms = vm["delay-time"].as<int>();
     int count = vm["count"].as<int>();
-    
-    auto tm1637 = std::unique_ptr<tm1637::Device>(new tm1637::Device(pinSCL, pinSDA, tm1637::GPIO_LIB));
+    bool verbose = vm["verbose"].as<bool>();
+    auto message = vm["message"].as<std::string>();
+    auto gpioLibStr = vm["gpio-lib"].as<std::string>();
+    auto gpioLib = gpioLibrary(gpioLibStr);
+
+    if (verbose) {
+        std::cout << "Using GPIO library '" << gpioLibStr << "' with pins " << pinSCL << " (SCL) and " << pinSDA << " (SDA)" << std::endl;
+        std::cout << "Displaying message '" << message << "'" << std::endl;
+        std::cout << "Repeating " << count << " time(s) with delay time " << delay_ms << "ms" << std::endl;
+    }
+
+    auto tm1637 = std::unique_ptr<tm1637::Device>(new tm1637::Device(pinSCL, pinSDA, gpioLib));
     tm1637::Sayer sayer(tm1637);
-    sayer.begin(vm["message"].as<std::string>());
+    sayer.begin(message);
     for (int i = 0; i < count; i++) {
         while (sayer.next()) {
             std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
