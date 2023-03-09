@@ -11,14 +11,19 @@ namespace tm1637 {
     class Sayer {
 
         public:
-            Sayer(std::unique_ptr<Device> &device, const std::string &str);
+            Sayer(std::unique_ptr<Device> &device);
             virtual ~Sayer() = default;
             Sayer(const Sayer &device) = delete;   // copying is not supported
             Sayer& operator=(const Sayer &device) = delete;   // assignment is not supported
 
-            void begin();
+            void begin(const std::string &str);
             bool next();
-            void clear();
+            bool finished() const;
+            void reset();   // returns to beginning of current string
+            void clear();   // clears the display and current string 
+        
+        private:
+            void setDigitsFromStr(const std::string &str);
 
         private:
             std::unique_ptr<Device> m_device;

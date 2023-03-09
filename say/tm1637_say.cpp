@@ -25,6 +25,7 @@ int main(int argc, char**argv) {
         ("scl,c", po::value<int>()->default_value(3), "GPIO pin to use for clock")
         ("sda,d", po::value<int>()->default_value(2), "GPIO pin to use for data")
         ("delay-time,t", po::value<int>()->default_value(250), "Delay time between characters (ms)")
+        ("count,n", po::value<int>()->default_value(1), "Repeat the message <arg> number of times")
     ;
     po::options_description hidden_options("Hidden options");
     hidden_options.add_options()
@@ -50,13 +51,18 @@ int main(int argc, char**argv) {
     int pinSDA = vm["sda"].as<int>();
     int pinSCL = vm["scl"].as<int>();
     int delay_ms = vm["delay-time"].as<int>();
+    int count = vm["count"].as<int>();
     
     auto tm1637 = std::unique_ptr<tm1637::Device>(new tm1637::Device(pinSCL, pinSDA, tm1637::GPIO_LIB));
-    tm1637::Sayer sayer(tm1637, vm["message"].as<std::string>());
-    sayer.begin();
-    while (sayer.next()) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
+    tm1637::Sayer sayer(tm1637);
+    sayer.begin(vm["message"].as<std::string>());
+    for (int i = 0; i < count; i++) {
+        while (sayer.next()) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
+        }
+        sayer.reset();
     }
+    sayer.clear();
 
     return 0;
 }

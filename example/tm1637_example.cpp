@@ -35,9 +35,9 @@ void fadeDisplay(Device &tm1637) {
 
 void say_something() {
     auto tm1637 = std::unique_ptr<Device>(new Device(3,2, GPIO_LIB));
-    std::string str = "SEGA TURbO";
-    Sayer sayer(tm1637, str);
-    sayer.begin();
+    std::string str = "HELLO WORLD";
+    Sayer sayer(tm1637);
+    sayer.begin(str);
     while (sayer.next()) {
         std::this_thread::sleep_for(std::chrono::milliseconds(250));
     }

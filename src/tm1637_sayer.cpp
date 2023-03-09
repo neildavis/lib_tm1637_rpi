@@ -4,9 +4,61 @@
 
 using namespace tm1637;
 
-Sayer::Sayer(std::unique_ptr<Device> &device, const std::string &str) 
-    : m_device(std::move(device)) {
+Sayer::Sayer(std::unique_ptr<Device> &device) 
+    : m_device(std::move(device)), m_it(m_digits.end()) {
 
+}
+
+void Sayer::begin(const std::string &str) {
+    m_device->clear();
+    m_data[0] = 0;
+    m_data[1] = 0;
+    m_data[2] = 0;
+    m_data[3] = 0;
+    setDigitsFromStr(str);
+}
+
+bool Sayer::next() {
+    if (this->finished()) {
+        return false;
+    }
+    // Shift down existing data
+    m_data[0] = m_data[1];
+    m_data[1] = m_data[2];
+    m_data[2] = m_data[3];
+    // Grab new digit
+    m_data[3] = *m_it;
+    // Show on device
+    m_device->showRawDigits(m_data);
+    m_it++;
+    return true;
+}
+
+inline bool Sayer::finished() const {
+    return (m_it == m_digits.end());
+}
+
+void Sayer::reset() {
+    m_device->clear();
+    m_data[0] = 0;
+    m_data[1] = 0;
+    m_data[2] = 0;
+    m_data[3] = 0;
+    m_it = m_digits.begin();
+}
+
+void Sayer::clear() {
+    m_device->clear();
+    m_digits.clear();
+    m_it = m_digits.end();
+}
+
+//
+// Private methods
+//
+
+void Sayer::setDigitsFromStr(const std::string &str) {
+    m_digits.clear();
     for (auto it=str.begin(); it != str.end(); it++) {
         switch (*it) {
         case '0':           m_digits.push_back(DIGIT_0);                break;
@@ -73,33 +125,7 @@ Sayer::Sayer(std::unique_ptr<Device> &device, const std::string &str)
     for (int i = 0; i < 4; i++) {
         m_digits.push_back(DIGIT_SPACE);
     }
-}
 
-void Sayer::begin() {
-    m_device->clear();
-    m_data[0] = 0;
-    m_data[1] = 0;
-    m_data[2] = 0;
-    m_data[3] = 0;
+    // Reset iterator to beginning
     m_it = m_digits.begin();
-}
-
-bool Sayer::next() {
-    if (m_it == m_digits.end()) {
-        return false;
-    }
-    // Shift down existing data
-    m_data[0] = m_data[1];
-    m_data[1] = m_data[2];
-    m_data[2] = m_data[3];
-    // Grab new digit
-    m_data[3] = *m_it;
-    // Show on device
-    m_device->showRawDigits(m_data);
-    m_it++;
-    return true;
-}
-
-void Sayer::clear() {
-    m_device->clear();
 }
