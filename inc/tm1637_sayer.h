@@ -11,7 +11,7 @@ namespace tm1637 {
     class Sayer {
 
         public:
-            Sayer(std::unique_ptr<Device> &device);
+            Sayer(const std::shared_ptr<Device> &device);
             virtual ~Sayer() = default;
             Sayer(const Sayer &device) = delete;   // copying is not supported
             Sayer& operator=(const Sayer &device) = delete;   // assignment is not supported
@@ -26,7 +26,7 @@ namespace tm1637 {
             void setDigitsFromStr(const std::string &str);
 
         private:
-            std::unique_ptr<Device> m_device;
+            std::shared_ptr<Device> m_device;
             std::vector<uint8_t> m_digits;
             std::vector<uint8_t>::iterator m_it;
             uint8_t m_data[4];

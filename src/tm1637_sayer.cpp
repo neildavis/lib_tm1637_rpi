@@ -4,8 +4,8 @@
 
 using namespace tm1637;
 
-Sayer::Sayer(std::unique_ptr<Device> &device) 
-    : m_device(std::move(device)), m_it(m_digits.end()) {
+Sayer::Sayer(const std::shared_ptr<Device> &device) 
+    : m_device(device), m_it(m_digits.end()) {
 
 }
 

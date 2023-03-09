@@ -69,7 +69,7 @@ int main(int argc, char**argv) {
         std::cout << "Repeating " << count << " time(s) with delay time " << delay_ms << "ms" << std::endl;
     }
 
-    auto tm1637 = std::unique_ptr<tm1637::Device>(new tm1637::Device(pinSCL, pinSDA, gpioLib));
+    auto tm1637 = std::make_shared<tm1637::Device>(pinSCL, pinSDA, gpioLib);
     tm1637::Sayer sayer(tm1637);
     sayer.begin(message);
     for (int i = 0; i < count; i++) {
