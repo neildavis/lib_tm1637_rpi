@@ -6,6 +6,8 @@
 
 using namespace tm1637;
 
+#define PI_OUTPUT 1
+
 PigpioBase::PigpioBase(int pinClk, int pinData) : 
     m_pinClk(pinClk),
     m_pinData(pinData) {

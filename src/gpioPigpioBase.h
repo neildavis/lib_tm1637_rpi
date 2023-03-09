@@ -1,7 +1,6 @@
 #pragma once
 
 #include "gpio.h"
-#include <pigpiod_if2.h>
 
 namespace tm1637 {
     

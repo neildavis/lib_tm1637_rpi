@@ -1,7 +1,9 @@
 #pragma once
 
 #include "gpio.h"
-#include <gpiod.h>
+
+struct gpiod_line;
+struct gpiod_chip;
 
 namespace tm1637 {
     

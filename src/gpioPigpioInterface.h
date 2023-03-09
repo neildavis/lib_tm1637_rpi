@@ -2,7 +2,6 @@
 
 #include "gpio.h"
 #include "gpioPigpioBase.h"
-#include <pigpiod_if2.h>
 
 namespace tm1637 {
     

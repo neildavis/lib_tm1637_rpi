@@ -1,10 +1,14 @@
 #include "gpioWiringPi.h"
-#include <wiringPi.h>
 
 #include <dlfcn.h>
 #include <stdexcept>
 
 using namespace tm1637;
+
+#define	OUTPUT  1
+#define	LOW     0
+#define	HIGH    1
+
 
 // wiringPi doesn't seem to install with a SONAME with a single major version, e.g. 'libwiringPi.so.2'
 // but since it's largely deprecated, we'll just assume the non-version name will be v2.x
