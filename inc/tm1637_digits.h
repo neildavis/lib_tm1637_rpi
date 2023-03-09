@@ -37,7 +37,7 @@
 #define DIGIT_O 0b00111111
 #define DIGIT_P 0b01110011
 #define DIGIT_q 0b01100111
-#define DIGIT_r 0b00110001
+#define DIGIT_r 0b00110011
 #define DIGIT_S 0b01101101
 #define DIGIT_t 0b01111000
 #define DIGIT_u 0b00011100
