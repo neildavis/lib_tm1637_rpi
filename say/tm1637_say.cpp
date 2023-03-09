@@ -21,7 +21,7 @@ int main(int argc, char**argv) {
         "Available OPTIONS"
         );
     user_options.add_options()
-        ("help", "Show usage information")
+        ("help,h", "Show usage information")
         ("scl,c", po::value<int>()->default_value(3), "GPIO pin to use for clock")
         ("sda,d", po::value<int>()->default_value(2), "GPIO pin to use for data")
         ("delay-time,t", po::value<int>()->default_value(250), "Delay time between characters (ms)")
