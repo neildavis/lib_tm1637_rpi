@@ -4,6 +4,7 @@ include(GNUInstallDirs)
 
 set(lib-name TM1637Pi)
 set(lib-version 1.1)
+set(say-name tm1637_say)
 
 # Project
 project(${lib-name} VERSION ${lib-version} DESCRIPTION "TM1637 driver for Raspberry Pi")
@@ -36,8 +37,19 @@ set_target_properties(${lib-name} PROPERTIES VERSION ${PROJECT_VERSION})
 # SOVERSION
 set_target_properties(${lib-name} PROPERTIES SOVERSION 1)
 
+# Say executable source code location
+set(say_cpp_base ./say)
+# Say source core code files
+file(GLOB_RECURSE say_src_files "${say_cpp_base}/*.cpp")
+# Say executable target
+add_executable(${say-name} ${say_src_files})
+# Link say executable with library and Boost boost_program_options
+target_link_libraries(${say-name} ${lib-name} boost_program_options)
+
+
 # Installation of lib & headers
-install(TARGETS ${lib-name}
+install(TARGETS ${lib-name} ${say-name}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 

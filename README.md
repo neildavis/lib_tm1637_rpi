@@ -1,4 +1,5 @@
 # lib_tm1637_rpi
+
 A library for using the [TM1637](https://datasheetspdf.com/pdf-file/788613/TitanMicro/TM1637/1)
 LED driver control IC to drive a 4 x 7-segment display from Raspberry Pi OS (Raspbian). Includes a small [`say`](./say/) utility to scroll some text.
 
@@ -61,12 +62,12 @@ to have permission to access the GPIO pins. You must also ensure that `pigpiod` 
 When using the `pigpiod` daemon, the library will connect to the daemon on `localhost` by default.
 If you wish to connect to a daemon on a different interface (or machine) you can do this by setting
 the `PIGPIO_ADDR` and `PIGPIO_PORT` environment variables as described in the documentation for
-[`pigpio_start()`](https://abyz.me.uk/rpi/pigpio/pdif2.html#pigpio_start) 
+[`pigpio_start()`](https://abyz.me.uk/rpi/pigpio/pdif2.html#pigpio_start)
 
 ### WiringPi
 
 `wiringPi` was [removed from v11 ('Bullseye')](https://github.com/RPi-Distro/repo/issues/214#issuecomment-1016542851) of Raspberry Pi OS packages. If you wish to use `wiringPi` for GPIO access you will need to build & install it manually by following the
-[instructions](https://github.com/WiringPi/WiringPi/blob/master/INSTALL). 
+[instructions](https://github.com/WiringPi/WiringPi/blob/master/INSTALL).
 Create a new directory somewhere, clone the
 [source](https://github.com/WiringPi/WiringPi.git) and build & install:
 
@@ -176,4 +177,35 @@ cd example
 # or ./build_for_pigpio_interface.sh 
 # or ./build_for_pigpio_daemon.sh 
 ./tm1637_example 
+```
+
+## tm1637_say utility
+
+A simple utility using `lib_tm1637_rpi` to scroll some text on a [TM1637](https://datasheetspdf.com/pdf-file/788613/TitanMicro/TM1637/1) display is included as part of the build. The cmake `install` action will also install it into the default binary installation directory which should be already included in your `$PATH`
+
+### tm1637_say usage
+
+Running `tm1637_say` without any arguments, or with `--help` will display help & usage information:
+
+```none
+$ tm1637_say 
+tm1637_say utility - © 2023 Neil Davis
+See LICENSE at https://github.com/neildavis/lib_tm1637_rpi/blob/main/LICENSE
+
+Usage: tm1637_say [OPTIONS] <message>
+
+Available OPTIONS:
+  -h [ --help ]                      Show usage information
+  -c [ --scl ] arg (=3)              GPIO pin to use for clock
+  -d [ --sda ] arg (=2)              GPIO pin to use for data
+  -g [ --gpio-lib ] arg (=GpioGPIOD) GPIO library
+  -t [ --delay-time ] arg (=250)     Delay time between characters (ms)
+  -n [ --count ] arg (=1)            Repeat the message <arg> number of times
+  -v [ --verbose ] [=arg(=1)] (=0)   Enable/Disable verbose output
+```
+
+e.g. the following invocation uses the wiringPi library with BCM pin numbering, pins 23 & 24 for `SCL` & `SDA` respectively, and displays a message faster than the default three times over :
+
+```sh
+tm1637_say -c 23 -d 24 -g GpioWiringPiBCM -t 100 -n 3 "HELLO WORLD"
 ```
