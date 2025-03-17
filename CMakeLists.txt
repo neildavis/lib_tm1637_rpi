@@ -1,6 +1,5 @@
 cmake_minimum_required(VERSION 3.9)
 
-include(GNUInstallDirs)
 
 set(lib-name TM1637Pi)
 set(lib-version 1.1)
@@ -8,6 +7,8 @@ set(say-name tm1637_say)
 
 # Project
 project(${lib-name} VERSION ${lib-version} DESCRIPTION "TM1637 driver for Raspberry Pi")
+
+include(GNUInstallDirs)
 
 # We require C++11
 set (CMAKE_CXX_STANDARD 11)
@@ -43,8 +44,10 @@ set(say_cpp_base ./say)
 file(GLOB_RECURSE say_src_files "${say_cpp_base}/*.cpp")
 # Say executable target
 add_executable(${say-name} ${say_src_files})
+# find required libs
+find_package(Boost COMPONENTS program_options REQUIRED)
 # Link say executable with library and Boost boost_program_options
-target_link_libraries(${say-name} ${lib-name} boost_program_options)
+target_link_libraries(${say-name} ${lib-name} dl Boost::program_options)
 
 
 # Installation of lib & headers

@@ -33,10 +33,12 @@ to any GPIO library at build time. The GPIO library is dynamically loaded at run
 ### Building
 
 You will need [cmake](https://cmake.org/) v3.9 or higher and the necessary C++ development tools
-installed in order to build and install the library:
+installed in order to build and install the library.
+In additioan, the `say` utility requires the development files for the `program_options`
+component from Boost:
 
 ```sh
-sudo apt install build-essential cmake
+sudo apt install build-essential cmake libboost-program-options-dev
 ```
 
 ### libgpiod
@@ -119,6 +121,7 @@ After configuring the build, you can build and install the library by simply inv
 
 ```sh
 sudo make install
+sudo ldconfig
 ```
 
 You may or may not need to use the `sudo` prefix this command depending on your user permissions:
