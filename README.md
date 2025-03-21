@@ -34,7 +34,7 @@ to any GPIO library at build time. The GPIO library is dynamically loaded at run
 
 You will need [cmake](https://cmake.org/) v3.9 or higher and the necessary C++ development tools
 installed in order to build and install the library.
-In additioan, the `say` utility requires the development files for the `program_options`
+In addition, the `say` utility requires the development files for the `program_options`
 component from Boost:
 
 ```sh

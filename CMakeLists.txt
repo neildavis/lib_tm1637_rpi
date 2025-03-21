@@ -1,8 +1,7 @@
 cmake_minimum_required(VERSION 3.9)
 
-
 set(lib-name TM1637Pi)
-set(lib-version 1.1)
+set(lib-version 1.4)
 set(say-name tm1637_say)
 
 # Project
@@ -59,3 +58,7 @@ install(TARGETS ${lib-name} ${say-name}
 # pkg-config support
 configure_file(pkg-config/lib${lib-name}.pc.in lib${lib-name}.pc @ONLY)
 install(FILES ${CMAKE_BINARY_DIR}/lib${lib-name}.pc DESTINATION ${CMAKE_INSTALL_DATAROOTDIR}/pkgconfig)
+
+# where to find our CMake modules
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+include(package)

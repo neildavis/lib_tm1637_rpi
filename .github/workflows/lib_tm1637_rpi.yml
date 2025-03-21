@@ -1,0 +1,84 @@
+name: Build & Package lib_tm1637_rpi
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - dev
+  release:
+    types: ['released', 'prereleased']
+    
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  linux-arm-sysroots:
+    name: Build sysroots for ARM Linux
+    strategy:
+      matrix:
+        arch: [armhf, arm64]
+    uses: neildavis/rpi-cross-toolchain-workflow/.github/workflows/rpi-arm-sysroots.yml@v1
+    with:
+      deb_release: bookworm
+      arch: ${{ matrix.arch }}
+      apt_pkgs: "libboost-program-options-dev"
+
+  lib_tm1637_rpi_build:
+    name: Build & package libTM1637 binaries
+    needs: [linux-arm-sysroots]
+    runs-on: ubuntu-24.04
+    strategy:
+        matrix:
+          tuple: [armv6-rpi-linux-gnueabihf, aarch64-rpi3-linux-gnu]
+          include:
+            - tuple: armv6-rpi-linux-gnueabihf
+              arch: armhf
+            - tuple: aarch64-rpi3-linux-gnu
+              arch: arm64
+    steps:
+      - name: Update common environment for ARM builds
+        run: |
+          echo "x-tools_tarball_url=https://github.com/neildavis/rpi-cross-toolchain-workflow/releases/latest/download/x-tools-${{ matrix.tuple }}.tar.gz" >> "$GITHUB_ENV"
+          echo "cmake_toolchain_opt='-DCMAKE_TOOLCHAIN_FILE=$HOME/x-tools/${{ matrix.tuple }}/cmake/${{ matrix.tuple }}.cmake'" >> "$GITHUB_ENV"
+      - name: Update environment for armhf cross build
+        if: matrix.arch == 'armhf'
+        run: |
+          echo "sysroot_cache_key=${{ needs.linux-arm-sysroots.outputs.sysroot_cache_key_armhf }}" >> "$GITHUB_ENV"
+          echo "sysroot=${{ needs.linux-arm-sysroots.outputs.sysroot_path_armhf }}" >> "$GITHUB_ENV"
+      - name: Update environment for arm64/aarch64 cross build
+        if: matrix.arch == 'arm64'
+        run: |
+          echo "sysroot_cache_key=${{ needs.linux-arm-sysroots.outputs.sysroot_cache_key_arm64 }}" >> "$GITHUB_ENV"
+          echo "sysroot=${{ needs.linux-arm-sysroots.outputs.sysroot_path_arm64 }}" >> "$GITHUB_ENV"
+      - name: Checkout source
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+      - name: Restore sysroot from cache
+        uses: actions/cache/restore@v4
+        with:
+          key: ${{ env.sysroot_cache_key }}
+          path: ${{ env.sysroot }}
+          fail-on-cache-miss: true
+      - name: Install x-tools
+        run: wget -qO- "${{ env.x-tools_tarball_url }}" | tar xz -C $HOME
+      - name: Cross build lib_tm1637_rpi
+        run: |
+          cmake -S . -B build ${{ env.cmake_toolchain_opt }}
+          cmake --build build -j$(nproc)
+      - name: Package lib_tm1637_rpi DEB
+        run: cd build && cpack -G DEB -D CPACK_DEBIAN_PACKAGE_ARCHITECTURE=${{ matrix.arch }}
+      - name: Upload DEB artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lib_tm1637_rpi_${{ matrix.arch }}-${{ github.ref_name }}
+          path: _packages/*.deb
+      - name: Release DEB artifact
+        if: ${{ github.event.action == 'released' || github.event.action == 'prereleased' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          files: "_packages/*.deb"
+    
