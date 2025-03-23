@@ -17,7 +17,7 @@ The currently supported GPIO libraries include:
 By default, `libgpiod` will be used.
 
 You must ensure you have installed the GPIO library that you wish to use
-(see [Prerequisites](#prerequisites) below), but your program **does not** have to link
+(see [instructions](#install-supported-gpio-libraries) below), but your program **does not** have to link
 to any GPIO library at build time. The GPIO library is dynamically loaded at runtime using
 [`dlopen()`](https://tldp.org/HOWTO/Program-Library-HOWTO/dl-libraries.html).
 
@@ -28,18 +28,30 @@ to any GPIO library at build time. The GPIO library is dynamically loaded at run
 * Independent control over the display brightness.
 * APIs to show numerical literals in both decimal (e.g. `1234`) & hexadecimal (e.g. `0xabcd`).
 
-## Prerequisites
+## Installation
 
-### Building
+With [releases](https://github.com/neildavis/lib_tm1637_rpi/releases) from **v1.4.0** onwards
+I am making available prebuilt Debian (`.deb`) packages for both 32-bit (`armhf`) & 64-bit (`arm64`/`aarch64`) versions of Raspberry Pi OS ('Bookworm').
 
-You will need [cmake](https://cmake.org/) v3.9 or higher and the necessary C++ development tools
-installed in order to build and install the library.
-In addition, the `say` utility requires the development files for the `program_options`
-component from Boost:
+Grab them from [here]([releases](https://github.com/neildavis/lib_tm1637_rpi/releases)) and install using `dpkg -i`: e.g.
 
 ```sh
-sudo apt install build-essential cmake libboost-program-options-dev
+# 64-bit
+sudo dpkpg -i  libtm1637pi_1.4_arm64.deb`
 ```
+
+OR
+
+```sh
+# 32-bit
+sudo dpkpg -i  libtm1637pi_1.4_armhf.deb`
+```
+
+Alternatively, you can follow the instructions in this README to
+[Build & Install From Source](#build--install-from-source)
+
+
+## Install Supported GPIO libraries 
 
 ### libgpiod
 
@@ -50,6 +62,15 @@ sudo apt install gpiod
 ```
 
 ### pigpio / pigpiod
+
+#### \*\* IMPORTANT - Raspberry Pi 5 \*\*
+
+Due to hardware architecture changes in the Raspberry Pi 5, ***`pigpio`*** 
+**does not currently wok on the Raspberry Pi 5**. See / track
+[these](https://github.com/joan2937/pigpio/issues/586)
+[issues](https://github.com/joan2937/pigpio/issues/589)
+for more details.
+
 
 If you wish to use the `pigpio` library and/or `pigpiod` for GPIO access, you may need to install the `pigpiod` package
 (although it may already be included by default in your OS image):
@@ -68,21 +89,22 @@ the `PIGPIO_ADDR` and `PIGPIO_PORT` environment variables as described in the do
 
 ### WiringPi
 
-`wiringPi` was [removed from v11 ('Bullseye')](https://github.com/RPi-Distro/repo/issues/214#issuecomment-1016542851) of Raspberry Pi OS packages. If you wish to use `wiringPi` for GPIO access you will need to build & install it manually by following the
-[instructions](https://github.com/WiringPi/WiringPi/blob/master/INSTALL).
-Create a new directory somewhere, clone the
-[source](https://github.com/WiringPi/WiringPi.git) and build & install:
+`wiringPi` was [removed from v11 ('Bullseye')](https://github.com/RPi-Distro/repo/issues/214#issuecomment-1016542851) of Raspberry Pi OS packages. If you wish to use `wiringPi` for GPIO access you will need to build and/or install it manually by following the instructions in [WiringPi's README](https://github.com/WiringPi/WiringPi/blob/master/README.md#installing)
+
+## Build & Install From Source
+
+### Prerequisites
+
+You will need [cmake](https://cmake.org/) v3.9 or higher and the necessary C++ development tools
+installed in order to build and install the library.
+In addition, the `say` utility requires the development files for the `program_options`
+component from Boost:
 
 ```sh
-git clone --depth 1 https://github.com/WiringPi/WiringPi.git
-cd WiringPi
-./build
-ldconfig
+sudo apt install build-essential cmake libboost-program-options-dev
 ```
 
-## Building & Installing
-
-### Build Configuration
+### Configure the build
 
 From this repo's root directory, create and change to a new `build` directory:
 
@@ -99,7 +121,7 @@ By default the library will be configured to build as a [shared library](https:/
 cmake -G"Unix Makefiles" ..
 ```
 
-If you prefer to configure the library to build as a [static library](https://en.wikipedia.org/wiki/Static_library) (.a) then you must declare `BUILD_SHARED_LIBS` as `OFF` when calling `cmake`. e.g.
+***OR*** if you prefer to configure the library to build as a [static library](https://en.wikipedia.org/wiki/Static_library) (.a) then you must declare `BUILD_SHARED_LIBS` as `OFF` when calling `cmake`. e.g.
 
 ```sh
 cmake -DBUILD_SHARED_LIBS=OFF -G"Unix Makefiles" ..
@@ -107,7 +129,7 @@ cmake -DBUILD_SHARED_LIBS=OFF -G"Unix Makefiles" ..
 
 ### **IMPORTANT**: Changing configuration
 
-If you wish to change the configuration options above, be sure to delete the `CMakeCache.txt` file **before** calling `cmake` again. It's also wise to perform a '`make clean`' before rebuilding:
+If you wish to change between the configuration options above, be sure to delete the `CMakeCache.txt` file **before** calling `cmake` again. It's also wise to perform a '`make clean`' before rebuilding:
 
 ```sh
 make clean
@@ -116,15 +138,13 @@ rm CMakeCache.txt
 
 ### Building & Install
 
-After configuring the build, you can build and install the library by simply invoking
+After [configuring](#configure-the-build) the build, you can build and install the library by simply invoking
 [`make`](https://www.gnu.org/software/make/) from the `build` directory:
 
 ```sh
 sudo make install
 sudo ldconfig
 ```
-
-You may or may not need to use the `sudo` prefix this command depending on your user permissions:
 
 ## Usage
 
@@ -141,27 +161,6 @@ An example of how to compile & link your program against the library:
 
 ```sh
 g++ -Wall -std=c++11 myprogram.cpp -o myprogram $(pkg-config --libs --cflags libTM1637Pi)
-```
-
-### Compiling
-
-The library makes use of [C++11](https://en.cppreference.com/w/cpp/11) features, so you will need to include
-the relevant flag when invoking your compiler. e.g. for (modern versions of) GCC (`g++`) you would use '`-std=c++11`'
-
-The library's public headers are installed into the system default directory (e.g. `/usr/local/include`).
-Add the following to your `CPPFLAGS` when invoking the compiler, **ONLY** if you are not using `pkg-config`:
-
-```sh
--I/usr/local/include
-```
-
-### Linking
-
-The library is installed into the system default directory (e.g. `/usr/local/lib`).
-Add the following options when invoking your compiler, **ONLY** if you are not using `pkg-config`:
-
-```sh
--L/usr/local/lib -lTM1637Pi -ldl
 ```
 
 ### API
