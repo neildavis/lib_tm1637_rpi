@@ -4,11 +4,11 @@
 #include <thread>
 #include <dlfcn.h>
 #include <stdexcept>
+#include <vector>
 
 using namespace tm1637;
 
 const char *kGpiodLibSoName = "libgpiod.so.2";
-const char *kDefaultGpioChipName = "gpiochip0";
 const char *kLineConsumer = "libTM1637Pi";
 
 GPIOD::GPIOD(int pinClk, int pinData) :
@@ -20,7 +20,19 @@ GPIOD::GPIOD(int pinClk, int pinData) :
 void GPIOD::initialize() {
     dynLoadGpiodLib();
 
-    m_chip = m_gpiod_chip_open_by_name(kDefaultGpioChipName);
+    std::vector<std::string> chip_names = {
+        "gpiochip4",    // For RPi5 - try first
+        "gpiochip0"
+    };
+
+    for (std::vector<std::string>::iterator it = chip_names.begin();
+        it != chip_names.end(); it++) {
+        m_chip = m_gpiod_chip_open_by_name(it->c_str());
+        if (m_chip) {
+            break;
+        }
+    }
+
     m_lineClk = m_gpiod_chip_get_line(m_chip, m_pinClk);
     m_lineData = m_gpiod_chip_get_line(m_chip, m_pinData);
     m_gpiod_line_request_output(m_lineClk,  kLineConsumer, 0); // open CLK as LOW
