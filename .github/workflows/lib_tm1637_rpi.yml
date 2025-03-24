@@ -39,20 +39,6 @@ jobs:
             - tuple: aarch64-rpi3-linux-gnu
               arch: arm64
     steps:
-      - name: Update common environment for ARM builds
-        run: |
-          echo "x-tools_tarball_url=https://github.com/neildavis/rpi-cross-toolchain-workflow/releases/latest/download/x-tools-${{ matrix.tuple }}.tar.gz" >> "$GITHUB_ENV"
-          echo "cmake_toolchain_opt='-DCMAKE_TOOLCHAIN_FILE=$HOME/x-tools/${{ matrix.tuple }}/cmake/${{ matrix.tuple }}.cmake'" >> "$GITHUB_ENV"
-      - name: Update environment for armhf cross build
-        if: matrix.arch == 'armhf'
-        run: |
-          echo "sysroot_cache_key=${{ needs.linux-arm-sysroots.outputs.sysroot_cache_key_armhf }}" >> "$GITHUB_ENV"
-          echo "sysroot=${{ needs.linux-arm-sysroots.outputs.sysroot_path_armhf }}" >> "$GITHUB_ENV"
-      - name: Update environment for arm64/aarch64 cross build
-        if: matrix.arch == 'arm64'
-        run: |
-          echo "sysroot_cache_key=${{ needs.linux-arm-sysroots.outputs.sysroot_cache_key_arm64 }}" >> "$GITHUB_ENV"
-          echo "sysroot=${{ needs.linux-arm-sysroots.outputs.sysroot_path_arm64 }}" >> "$GITHUB_ENV"
       - name: Checkout source
         uses: actions/checkout@v4
         with:
@@ -60,14 +46,14 @@ jobs:
       - name: Restore sysroot from cache
         uses: actions/cache/restore@v4
         with:
-          key: ${{ env.sysroot_cache_key }}
-          path: ${{ env.sysroot }}
+          key: ${{ needs.linux-arm-sysroots.outputs[format('sysroot_cache_key_{0}', matrix.arch)] }}
+          path: ${{ needs.linux-arm-sysroots.outputs[format('sysroot_path_{0}', matrix.arch)] }}
           fail-on-cache-miss: true
       - name: Install x-tools
-        run: wget -qO- "${{ env.x-tools_tarball_url }}" | tar xz -C $HOME
+        run: wget -qO- "https://github.com/neildavis/rpi-cross-toolchain-workflow/releases/latest/download/x-tools-${{ matrix.tuple }}.tar.gz" | tar xz -C $HOME
       - name: Cross build lib_tm1637_rpi
         run: |
-          cmake -S . -B build ${{ env.cmake_toolchain_opt }}
+          cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE=$HOME/x-tools/${{ matrix.tuple }}/cmake/${{ matrix.tuple }}.cmake
           cmake --build build -j$(nproc)
       - name: Package lib_tm1637_rpi DEB
         run: cd build && cpack -G DEB -D CPACK_DEBIAN_PACKAGE_ARCHITECTURE=${{ matrix.arch }}
