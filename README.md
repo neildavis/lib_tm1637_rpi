@@ -31,20 +31,22 @@ to any GPIO library at build time. The GPIO library is dynamically loaded at run
 ## Installation
 
 With [releases](https://github.com/neildavis/lib_tm1637_rpi/releases) from **v1.4.0** onwards
-I am making available prebuilt Debian (`.deb`) packages for both 32-bit (`armhf`) & 64-bit (`arm64`/`aarch64`) versions of Raspberry Pi OS ('Bookworm').
+I am making available prebuilt Debian (`.deb`) packages for both
+32-bit (`armhf`) & 64-bit (`arm64`/`aarch64`) versions of Raspberry Pi OS
+(Debian versions 12 '_Bookworm_' / 13 '_Trixie_').
 
-Grab them from [here]([releases](https://github.com/neildavis/lib_tm1637_rpi/releases)) and install using `dpkg -i`: e.g.
+Download them from the [releases]([releases](https://github.com/neildavis/lib_tm1637_rpi/releases)) and install using `dpkg -i`: e.g.
 
 ```sh
 # 64-bit
-sudo dpkpg -i  libtm1637pi_1.4_arm64.deb`
+sudo dpkpg -i  libtm1637pi_1.4.1_arm64.deb`
 ```
 
 OR
 
 ```sh
 # 32-bit
-sudo dpkpg -i  libtm1637pi_1.4_armhf.deb`
+sudo dpkpg -i  libtm1637pi_1.4.1_armhf.deb`
 ```
 
 Alternatively, you can follow the instructions in this README to

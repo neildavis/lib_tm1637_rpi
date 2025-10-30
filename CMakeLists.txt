@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.9)
 
 set(lib-name TM1637Pi)
-set(lib-version 1.4)
+set(lib-version 1.4.1)
 set(say-name tm1637_say)
 
 # Project
@@ -44,6 +44,7 @@ file(GLOB_RECURSE say_src_files "${say_cpp_base}/*.cpp")
 # Say executable target
 add_executable(${say-name} ${say_src_files})
 # find required libs
+set(Boost_USE_STATIC_LIBS ON)  # Statically link to Boost (no SOVERSION support in Debian?)
 find_package(Boost COMPONENTS program_options REQUIRED)
 # Link say executable with library and Boost boost_program_options
 target_link_libraries(${say-name} ${lib-name} dl Boost::program_options)
