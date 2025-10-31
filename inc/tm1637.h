@@ -1,5 +1,6 @@
 #pragma once
 #include <inttypes.h>
+#include <memory>
 
 namespace tm1637 {
 
@@ -85,7 +86,7 @@ namespace tm1637 {
 
         
     protected:
-        MGPIO *m_gpio;
+        std::unique_ptr<MGPIO> m_gpio;
         uint8_t m_data[4];
         uint8_t m_brightness;
         bool m_showColon;

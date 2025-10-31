@@ -10,7 +10,7 @@ project(${lib-name} VERSION ${lib-version} DESCRIPTION "TM1637 driver for Raspbe
 include(GNUInstallDirs)
 
 # We require C++11
-set (CMAKE_CXX_STANDARD 11)
+set (CMAKE_CXX_STANDARD 14)
 
 # Default to building shared lib (.so) instead of static lib (.a) if not set on cmd line
 option(BUILD_SHARED_LIBS "Build shared library (instead of static)" ON)
