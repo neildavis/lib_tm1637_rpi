@@ -68,7 +68,7 @@ sudo apt install gpiod
 #### \*\* IMPORTANT - Raspberry Pi 5 \*\*
 
 Due to hardware architecture changes in the Raspberry Pi 5, ***`pigpio`*** 
-**does not currently wok on the Raspberry Pi 5**. See / track
+**does not currently work on the Raspberry Pi 5**. See / track
 [these](https://github.com/joan2937/pigpio/issues/586)
 [issues](https://github.com/joan2937/pigpio/issues/589)
 for more details.
@@ -162,7 +162,7 @@ pkg-config --libs --cflags libTM1637Pi
 An example of how to compile & link your program against the library:
 
 ```sh
-g++ -Wall -std=c++11 myprogram.cpp -o myprogram $(pkg-config --libs --cflags libTM1637Pi)
+g++ -Wall -std=c++14 myprogram.cpp -o myprogram $(pkg-config --libs --cflags libTM1637Pi)
 ```
 
 ### API

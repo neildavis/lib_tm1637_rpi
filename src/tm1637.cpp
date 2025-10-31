@@ -3,6 +3,7 @@
 #include "gpioGPIOD.h"
 #include "gpioPigpioInterface.h"
 #include "gpioPigpioDaemon.h"
+#include <memory>
 
 using namespace tm1637;
 
@@ -49,20 +50,20 @@ Device::Device(int pinClk, int pinData, GPIOLib gpioLib)
     m_showColon(false) {
     switch (gpioLib) {
     case GpioWiringPi:
-        m_gpio = new WiringPi(pinClk, pinData, false);
+        m_gpio = std::make_unique<WiringPi>(pinClk, pinData, false);
         break;
     case GpioWiringPiBCM:
-        m_gpio = new WiringPi(pinClk, pinData, true);
+        m_gpio = std::make_unique<WiringPi>(pinClk, pinData, true);
         break;
     case GpioPigpioInterface:
-        m_gpio = new PigpioInterface(pinClk, pinData);
+        m_gpio = std::make_unique<PigpioInterface>(pinClk, pinData);
         break;
     case GpioPigpioDaemon:
-        m_gpio = new PigpioDaemon(pinClk, pinData);
+        m_gpio = std::make_unique<PigpioDaemon>(pinClk, pinData);
         break;
     case GpioGPIOD:
     default:
-        m_gpio = new GPIOD(pinClk, pinData);
+        m_gpio = std::make_unique<GPIOD>(pinClk, pinData);
         break;
     }
     m_gpio->initialize();
@@ -72,7 +73,6 @@ Device::Device(int pinClk, int pinData, GPIOLib gpioLib)
 
 Device::~Device() {
     m_gpio->deinitialize();
-    delete m_gpio;
 }
 
 void Device::displayOff() {

@@ -5,73 +5,81 @@
 #include <dlfcn.h>
 #include <stdexcept>
 #include <vector>
+#include <sstream>
+#include <string>
+
+#include "gpioGPIODv1.h"
+#include "gpioGPIODv2.h"
 
 using namespace tm1637;
-
-const char *kGpiodLibSoName = "libgpiod.so.2";
-const char *kLineConsumer = "libTM1637Pi";
 
 GPIOD::GPIOD(int pinClk, int pinData) :
     m_pinClk(pinClk),
     m_pinData(pinData) {
 }
 
-
 void GPIOD::initialize() {
-    dynLoadGpiodLib();
-
-    std::vector<std::string> chip_names = {
-        "gpiochip4",    // For RPi5 - try first
-        "gpiochip0"
-    };
-
-    for (std::vector<std::string>::iterator it = chip_names.begin();
-        it != chip_names.end(); it++) {
-        m_chip = m_gpiod_chip_open_by_name(it->c_str());
-        if (m_chip) {
-            break;
-        }
+    int soVersion = dynLoadGpiodLib(); // throws if unsuccessful
+    // Initialize the correct MGPIO proxy for the libgpiod SO version loaded
+    // Note: Due to legacy reasons, SO.3 is lib version >= 2.1 and SO.2 is >= v1.5.1 
+    switch (soVersion)
+    {
+    case 3:
+        m_gpio = std::make_unique<GPIODv2>(m_pinClk, m_pinData, m_libHandle);
+        break;
+    case 2:
+        m_gpio = std::make_unique<GPIODv1>(m_pinClk, m_pinData, m_libHandle);
+        break;
+    default:
+        // Should never get here since dynLoadGpiodLib() will throw if not returning
+        //  supported SO version on a successful dyn lib load
+        throw std::runtime_error("Error: Unsupported libgpiod SO version");
+        break;
     }
-
-    m_lineClk = m_gpiod_chip_get_line(m_chip, m_pinClk);
-    m_lineData = m_gpiod_chip_get_line(m_chip, m_pinData);
-    m_gpiod_line_request_output(m_lineClk,  kLineConsumer, 0); // open CLK as LOW
-    m_gpiod_line_request_output(m_lineData, kLineConsumer, 0); // open DIO as LOW
-
+    // If we get here, m_gpio is assumed to be valid since dynLoadGpiodLib will throw if not.
+    m_gpio->initialize();
 }
 
 void GPIOD::deinitialize() {
-    m_gpiod_line_release(m_lineClk);
-    m_gpiod_line_release(m_lineData);
-    m_gpiod_chip_close(m_chip);
+    m_gpio->deinitialize();
     dlclose(m_libHandle);
 }
 
 void GPIOD::setClock(PinDigitalState state) {
-    m_gpiod_line_set_value(m_lineClk, state);
+    m_gpio->setClock(state);
 }
 
 void GPIOD::setData(PinDigitalState state) {
-    m_gpiod_line_set_value(m_lineData, state);
+    m_gpio->setData(state);
 }
 
 void GPIOD::delayMicroseconds(int usecs) {
     std::this_thread::sleep_for(std::chrono::microseconds(usecs));
 }
 
-void GPIOD::dynLoadGpiodLib() {
-    m_libHandle = dlopen(kGpiodLibSoName, RTLD_LAZY);
-    if (NULL == m_libHandle) { throw std::runtime_error(dlerror()); }
-    m_gpiod_chip_open_by_name = reinterpret_cast<gpiod_chip* (*)(const char*)>(dlsym(m_libHandle, "gpiod_chip_open_by_name"));
-    if (NULL == m_gpiod_chip_open_by_name) { throw std::runtime_error(dlerror()); }
-    m_gpiod_chip_close = reinterpret_cast<void (*)(gpiod_chip*)>(dlsym(m_libHandle, "gpiod_chip_close"));
-    if (NULL == m_gpiod_chip_close) { throw std::runtime_error(dlerror()); }
-    m_gpiod_chip_get_line = reinterpret_cast<gpiod_line* (*)(gpiod_chip*, unsigned int)>(dlsym(m_libHandle, "gpiod_chip_get_line"));
-    if (NULL == m_gpiod_chip_get_line) { throw std::runtime_error(dlerror()); }
-    m_gpiod_line_release = reinterpret_cast<void (*)(gpiod_line*)>(dlsym(m_libHandle, "gpiod_line_release"));
-    if (NULL == m_gpiod_line_release) { throw std::runtime_error(dlerror()); }
-    m_gpiod_line_request_output = reinterpret_cast<int (*)(gpiod_line*, const char*, int)>(dlsym(m_libHandle, "gpiod_line_request_output"));
-    if (NULL == m_gpiod_line_request_output) { throw std::runtime_error(dlerror()); }
-    m_gpiod_line_set_value = reinterpret_cast<int (*)(gpiod_line*, int)>(dlsym(m_libHandle, "gpiod_line_set_value"));
-    if (NULL == m_gpiod_line_set_value) { throw std::runtime_error(dlerror()); }
+int GPIOD::dynLoadGpiodLib() {
+    // Attempt to open libgpiod.so.N in this order of 'N'
+    std::vector<int> soVersions = {
+        3,  // libgpiod3 in Debian 13 'Trixie' +
+        2   // libgpiod2 in Debian 12 'Bookworm' (and earlier)
+    };
+    for (auto it = soVersions.begin(); it != soVersions.end(); it++) {
+        std::ostringstream oss;
+        oss << "libgpiod.so." << *it;
+        m_libHandle = dlopen(oss.str().c_str(), RTLD_LAZY);
+        if (m_libHandle) {
+            return *it;
+        }
+    }
+    std::ostringstream oss;
+    oss << "Unable to load any supported SO version of libgpiod.so. Tried versions: ";
+    for (auto it = soVersions.begin(); it != soVersions.end(); it++) {
+        oss << *it;
+        if (it < soVersions.end() - 1) {
+            oss << ", ";
+        }
+    }
+
+    throw std::runtime_error(oss.str().c_str());
+    return -1;  // never get here due to exception thrown, but satisifes the compiler
 }
