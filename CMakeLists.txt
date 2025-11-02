@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.9)
 
 set(lib-name TM1637Pi)
-set(lib-version 1.4.1)
+set(lib-version 1.5)
 set(say-name tm1637_say)
 
 # Project
