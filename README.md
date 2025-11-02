@@ -39,14 +39,14 @@ Download them from the [releases]([releases](https://github.com/neildavis/lib_tm
 
 ```sh
 # 64-bit
-sudo dpkpg -i  libtm1637pi_1.4.1_arm64.deb`
+sudo dpkpg -i  libtm1637pi_1.5_arm64.deb`
 ```
 
 OR
 
 ```sh
 # 32-bit
-sudo dpkpg -i  libtm1637pi_1.4.1_armhf.deb`
+sudo dpkpg -i  libtm1637pi_1.5_armhf.deb`
 ```
 
 Alternatively, you can follow the instructions in this README to
@@ -62,6 +62,12 @@ If you wish to use `libgpiod` for GPIO access, you will need to install the `gpi
 ```sh
 sudo apt install gpiod
 ```
+
+The library supports both SO versions of `libgpiod3` - as included in Debian 13 'Trixie'- 
+and the older `libgpiod2` - as included in previous OS versions.
+
+Although these versions are neither source nor binary compatible (API & ABI change),
+this library will identify and dynamically load the installed version and call the appropriate API.
 
 ### pigpio / pigpiod
 
