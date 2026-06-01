@@ -41,11 +41,11 @@ jobs:
               arch: arm64
     steps:
       - name: Checkout source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           submodules: true
       - name: Restore sysroot from cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           key: ${{ needs.linux-arm-sysroots.outputs[format('sysroot_cache_key_{0}', matrix.arch)] }}
           path: ${{ needs.linux-arm-sysroots.outputs[format('sysroot_path_{0}', matrix.arch)] }}
@@ -59,13 +59,14 @@ jobs:
       - name: Package lib_tm1637_rpi DEB
         run: cd build && cpack -G DEB -D CPACK_DEBIAN_PACKAGE_ARCHITECTURE=${{ matrix.arch }}
       - name: Upload DEB artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: lib_tm1637_rpi_${{ matrix.arch }}-${{ github.run_number }}
           path: _packages/*.deb
+          archive: false
       - name: Release DEB artifact
         if: ${{ github.event.action == 'released' || github.event.action == 'prereleased' }}
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: "_packages/*.deb"
     
