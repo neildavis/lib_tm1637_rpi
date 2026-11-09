@@ -45,7 +45,7 @@ file(GLOB_RECURSE say_src_files "${say_cpp_base}/*.cpp")
 add_executable(${say-name} ${say_src_files})
 # find required libs
 set(Boost_USE_STATIC_LIBS ON)  # Statically link to Boost (no SOVERSION support in Debian?)
-find_package(Boost COMPONENTS program_options REQUIRED)
+find_package(Boost CONFIG COMPONENTS program_options REQUIRED)
 # Link say executable with library and Boost boost_program_options
 target_link_libraries(${say-name} ${lib-name} dl Boost::program_options)
 
