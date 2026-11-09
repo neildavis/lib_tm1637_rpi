@@ -103,10 +103,11 @@ the `PIGPIO_ADDR` and `PIGPIO_PORT` environment variables as described in the do
 
 ### Prerequisites
 
-You will need [cmake](https://cmake.org/) v3.9 or higher and the necessary C++ development tools
+You will need [cmake](https://cmake.org/) (v3.9 or higher) and the necessary C++ development tools
 installed in order to build and install the library.
-In addition, the `say` utility requires the development files for the `program_options`
-component from Boost:
+In addition, the `say` utility requires the development files for the
+[`program_options`](https://www.boost.org/doc/libs/latest/doc/html/program_options.html)
+component from Boost (v1.70 or higher). These requirements have been satisfied by apt packages in Debian repos since v11 ('Bullseye'):
 
 ```sh
 sudo apt install build-essential cmake libboost-program-options-dev
