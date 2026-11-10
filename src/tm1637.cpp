@@ -4,7 +4,9 @@
 #include "gpioPigpioInterface.h"
 #include "gpioPigpioDaemon.h"
 #include "gpioCommands.h"
+#include "gpioExecutor.h"
 #include <memory>
+#include <utility>
 
 using namespace tm1637;
 
@@ -42,45 +44,48 @@ const uint8_t digits[] = {
 };
 const uint8_t COLON_MASK = 0x80;    // 0b10000000
 
-Device::Device(int pinClk, int pinData) : Device (pinClk, pinData, GpioGPIOD) {
+namespace {
+std::unique_ptr<MGPIO> createGPIO(int pinClk, int pinData, GPIOLib gpioLib) {
+    switch (gpioLib) {
+    case GpioWiringPi:
+        return std::make_unique<WiringPi>(pinClk, pinData, false);
+    case GpioWiringPiBCM:
+        return std::make_unique<WiringPi>(pinClk, pinData, true);
+    case GpioPigpioInterface:
+        return std::make_unique<PigpioInterface>(pinClk, pinData);
+    case GpioPigpioDaemon:
+        return std::make_unique<PigpioDaemon>(pinClk, pinData);
+    case GpioGPIOD:
+    default:
+        return std::make_unique<GPIOD>(pinClk, pinData);
+    }
+}
+}
+
+Device::Device(int pinClk, int pinData) : Device(pinClk, pinData, GpioGPIOD) {
 }
 
 Device::Device(int pinClk, int pinData, GPIOLib gpioLib)
-    : m_data{0,0,0,0}
-    , m_brightness(CMD_DISPLAY_ON | BRIGHTNESS_MAX),
-    m_showColon(false) {
-    // Finish allocating the startup batch before constructing a backend whose
-    // destructor may require initialize() to have loaded its shared library.
-    GPIOCommandBatch startup(3);
-    startup.initialize();
-    startup.setClock(PIN_LOW);
-    startup.setData(PIN_LOW);
-
-    switch (gpioLib) {
-    case GpioWiringPi:
-        m_gpio = std::make_unique<WiringPi>(pinClk, pinData, false);
-        break;
-    case GpioWiringPiBCM:
-        m_gpio = std::make_unique<WiringPi>(pinClk, pinData, true);
-        break;
-    case GpioPigpioInterface:
-        m_gpio = std::make_unique<PigpioInterface>(pinClk, pinData);
-        break;
-    case GpioPigpioDaemon:
-        m_gpio = std::make_unique<PigpioDaemon>(pinClk, pinData);
-        break;
-    case GpioGPIOD:
-    default:
-        m_gpio = std::make_unique<GPIOD>(pinClk, pinData);
-        break;
-    }
-    startup.drain(*m_gpio);
+    : Device(pinClk, pinData, gpioLib, DeviceOptions{}) {
 }
 
-Device::~Device() {
-    // Shutdown is a single-command sequence; avoid allocating in the destructor.
-    const GPIOCommand shutdown{GPIOCommand::Kind::Deinitialize, 0};
-    shutdown.execute(*m_gpio);
+Device::Device(int pinClk, int pinData, GPIOLib gpioLib, const DeviceOptions& options)
+    : m_data{0,0,0,0}
+    , m_brightness(CMD_DISPLAY_ON | BRIGHTNESS_MAX)
+    , m_showColon(false) {
+    m_executor = std::make_unique<GPIOExecutor>(m_gpio,
+        [pinClk, pinData, gpioLib] { return createGPIO(pinClk, pinData, gpioLib); },
+        options.execution);
+}
+
+Device::~Device() = default;
+
+void Device::wait(std::chrono::milliseconds duration) {
+    m_executor->wait(duration);
+}
+
+void Device::flush() {
+    m_executor->flush();
 }
 
 void Device::displayOff() {
@@ -225,21 +230,29 @@ void protocolWriteByte(MGPIO& gpio, uint8_t data) {
 }
 }
 
-// Preserve immediate execution for subclasses using the protected helpers.
+// Protected helpers follow the same execution mode as complete display updates.
 void Device::start() const {
-    protocolStart(*m_gpio);
+    GPIOCommandBatch commands(6);
+    protocolStart(commands);
+    m_executor->submit(std::move(commands));
 }
 
 void Device::stop() const {
-    protocolStop(*m_gpio);
+    GPIOCommandBatch commands(8);
+    protocolStop(commands);
+    m_executor->submit(std::move(commands));
 }
 
 void Device::br() const {
-    protocolBreak(*m_gpio);
+    GPIOCommandBatch commands(14);
+    protocolBreak(commands);
+    m_executor->submit(std::move(commands));
 }
 
 void Device::writeByte(uint8_t data) const {
-    protocolWriteByte(*m_gpio, data);
+    GPIOCommandBatch commands(46);
+    protocolWriteByte(commands, data);
+    m_executor->submit(std::move(commands));
 }
 
 void Device::showCurrentData() {
@@ -257,7 +270,7 @@ void Device::showCurrentData() {
     protocolBreak(commands);
     protocolWriteByte(commands, m_brightness);
     protocolStop(commands);
-    commands.drain(*m_gpio);
+    m_executor->submit(std::move(commands));
 }
 
 void Device::showDigitAtPos(int pos) {
@@ -277,7 +290,7 @@ void Device::showDigitAtPos(int pos) {
     protocolBreak(commands);
     protocolWriteByte(commands, m_brightness);
     protocolStop(commands);
-    commands.drain(*m_gpio);
+    m_executor->submit(std::move(commands));
 }
 
 void Device::applyColonMask() {

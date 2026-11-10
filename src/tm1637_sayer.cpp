@@ -34,7 +34,7 @@ bool Sayer::next() {
     return true;
 }
 
-inline bool Sayer::finished() const {
+bool Sayer::finished() const {
     return (m_it == m_digits.end());
 }
 

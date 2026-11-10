@@ -53,6 +53,6 @@ namespace tm1637 {
         unsigned int m_pinClk;
         unsigned int m_pinData;
         void *m_libHandle;
-        gpiod_line_request *m_lineRequest;
+        gpiod_line_request *m_lineRequest = nullptr;
    };
 }

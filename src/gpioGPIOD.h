@@ -19,7 +19,7 @@ namespace tm1637 {
     private:
         int m_pinClk;
         int m_pinData;
-        void *m_libHandle;
+        void *m_libHandle = nullptr;
         std::unique_ptr<MGPIO> m_gpio; // proxied for GPIODv1 or GPIODv2
     };
 }

@@ -1,4 +1,5 @@
 #include "tm1637.h"
+#include "tm1637_sayer.h"
 #include "fakeWiringPi.h"
 
 #include <fstream>
@@ -12,6 +13,7 @@
 namespace {
 constexpr int clockPin = 23;
 constexpr int dataPin = 24;
+std::thread::id executionThread;
 
 void require(bool condition, const std::string& message) {
     if (!condition) {
@@ -24,8 +26,8 @@ void require(bool condition, const std::string& message) {
 std::string trace() {
     std::ostringstream output;
     for (const auto& call : fake_wiringpi::calls()) {
-        require(call.thread == std::this_thread::get_id(),
-                "GPIO operation did not execute on the calling thread");
+        require(call.thread == executionThread,
+                "GPIO operation did not execute on the selected thread");
         switch (call.kind) {
         case fake_wiringpi::Kind::Setup: output << "setup;"; break;
         case fake_wiringpi::Kind::SetupBCM: output << "bcm;"; break;
@@ -50,6 +52,8 @@ std::string trace() {
 class ProtocolDevice : public tm1637::Device {
 public:
     ProtocolDevice() : Device(clockPin, dataPin, tm1637::GpioWiringPi) {}
+    explicit ProtocolDevice(const tm1637::DeviceOptions& options)
+        : Device(clockPin, dataPin, tm1637::GpioWiringPi, options) {}
     using Device::start;
     using Device::stop;
     using Device::br;
@@ -59,7 +63,10 @@ public:
 
 int main(int argc, char** argv) {
     try {
-        require(argc == 2, "Usage: tm1637_device_tests <trace-file|--record>");
+        require(argc == 2 || (argc == 3 && std::string(argv[2]) == "--worker"),
+                "Usage: tm1637_device_tests <trace-file|--record> [--worker]");
+        const bool worker = argc == 3;
+        const tm1637::DeviceOptions options{tm1637::ExecutionMode::Worker};
         const bool record = std::string(argv[1]) == "--record";
         std::map<std::string, std::string> expected;
         if (!record) {
@@ -72,6 +79,7 @@ int main(int argc, char** argv) {
             }
         }
         std::size_t checked = 0;
+        std::function<void()> synchronize;
         auto check = [&](const std::string& name) {
             const auto actual = trace();
             if (record) {
@@ -86,14 +94,29 @@ int main(int argc, char** argv) {
         auto update = [&](const std::string& name, const std::function<void()>& action) {
             fake_wiringpi::reset();
             action();
-            // The complete trace must already be present when the call returns.
+            // In worker mode establish completion before examining the trace.
+            // Inline flush is a no-op, preserving the original synchronous check.
+            synchronize();
             check(name);
         };
 
         fake_wiringpi::reset();
         {
-            ProtocolDevice device;
+            auto owned = worker ? std::make_unique<ProtocolDevice>(options)
+                                : std::make_unique<ProtocolDevice>();
+            auto& device = *owned;
+            synchronize = [&device] { device.flush(); };
+            executionThread = fake_wiringpi::calls().front().thread;
+            require((executionThread != std::this_thread::get_id()) == worker,
+                    "Unexpected execution thread");
             check("initialize-wiringpi");
+            const auto pauseStart = std::chrono::steady_clock::now();
+            device.wait(std::chrono::milliseconds(5));
+            device.flush();
+            require(std::chrono::steady_clock::now() - pauseStart >= std::chrono::milliseconds(5),
+                    "Device wait completed too early");
+            device.wait(std::chrono::milliseconds(0));
+            device.wait(std::chrono::milliseconds(-1));
             update("raw-digits", [&] { device.showRawDigits(0x00, 0xff, 0x55, 0xaa); });
             const uint8_t raw[] = {0xff, 0x00, 0xaa, 0x55};
             update("raw-digits-array", [&] { device.showRawDigits(raw); });
@@ -134,29 +157,58 @@ int main(int argc, char** argv) {
             bool failed = false;
             try {
                 device.showRawDigits(1, 2, 3, 4);
+                device.flush();
             } catch (const std::runtime_error&) {
                 failed = true;
             }
-            require(failed, "GPIO failure was not propagated synchronously");
+            require(failed, "GPIO failure was not propagated");
             check("failed-update-prefix");
             // No commands left from the failed update may leak into the next one.
-            update("clear-after-failure", [&] { device.clear(); });
+            if (!worker) {
+                update("clear-after-failure", [&] { device.clear(); });
+            } else {
+                bool rejected = false;
+                try { device.clear(); } catch (const std::runtime_error&) { rejected = true; }
+                require(rejected, "Failed worker accepted another update");
+                expected.erase("clear-after-failure");
+            }
             fake_wiringpi::reset();
         }
         check("deinitialize-wiringpi");
 
         fake_wiringpi::reset();
         {
-            tm1637::Device device(clockPin, dataPin, tm1637::GpioWiringPiBCM);
+            auto owned = worker
+                ? std::make_unique<tm1637::Device>(clockPin, dataPin, tm1637::GpioWiringPiBCM, options)
+                : std::make_unique<tm1637::Device>(clockPin, dataPin, tm1637::GpioWiringPiBCM);
+            auto& device = *owned;
+            synchronize = [&device] { device.flush(); };
+            executionThread = fake_wiringpi::calls().front().thread;
+            require((executionThread != std::this_thread::get_id()) == worker,
+                    "Unexpected BCM execution thread");
             check("initialize-wiringpi-bcm");
             update("bcm-raw-digits", [&] { device.showRawDigits(1, 2, 3, 4); });
             fake_wiringpi::reset();
         }
         check("deinitialize-wiringpi-bcm");
 
+        fake_wiringpi::reset();
+        {
+            auto device = worker
+                ? std::make_shared<tm1637::Device>(clockPin, dataPin, tm1637::GpioWiringPi, options)
+                : std::make_shared<tm1637::Device>(clockPin, dataPin, tm1637::GpioWiringPi);
+            executionThread = fake_wiringpi::calls().front().thread;
+            tm1637::Sayer sayer(device);
+            sayer.begin("A");
+            while (sayer.next()) { device->wait(std::chrono::milliseconds(1)); }
+            require(sayer.finished(), "Sayer did not finish submitting characters");
+            device->flush();
+            trace(); // Validate thread ownership for the complete Sayer sequence.
+        }
+
         if (!record) {
             require(checked == expected.size(), "Unused protocol traces");
-            std::cout << checked << " protocol traces match; all GPIO calls are synchronous.\n";
+            std::cout << checked << " protocol traces match on the selected execution thread.\n";
         }
         return 0;
     } catch (const std::exception& error) {

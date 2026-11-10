@@ -14,6 +14,7 @@ PigpioDaemon::PigpioDaemon(int pinClk, int pinData) :
 
 void PigpioDaemon::dynLoadLib() {
     m_libHandle = dlopen(kPigpiodLibSoName, RTLD_LAZY);
+    if (!m_libHandle) { throw std::runtime_error(dlerror()); }
     m_time_sleep = reinterpret_cast<void (*)(double)>(dlsym(m_libHandle, "time_sleep"));
     if (NULL == m_time_sleep) { throw std::runtime_error(dlerror()); }
     m_pigpio_start = reinterpret_cast<int (*)(const char*, const char*)>(dlsym(m_libHandle, "pigpio_start"));
@@ -35,8 +36,9 @@ void PigpioDaemon::initializeGpio() {
 }
 
 void PigpioDaemon::deinitializeGpio() {
-    if (0 != m_pi) {
+    if (m_pi >= 0) {
         m_pigpio_stop(m_pi);
+        m_pi = -1;
     }
 }
 

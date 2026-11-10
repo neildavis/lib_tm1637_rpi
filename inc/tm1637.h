@@ -1,6 +1,7 @@
 #pragma once
 #include <inttypes.h>
 #include <memory>
+#include <chrono>
 
 namespace tm1637 {
 
@@ -51,12 +52,22 @@ namespace tm1637 {
         RadixHex = 0x10
     } Radix;
 
+    enum class ExecutionMode { Inline, Worker };
+
+    struct DeviceOptions {
+        ExecutionMode execution = ExecutionMode::Inline;
+    };
+
     class MGPIO;
-    /** Device is the main type that provides access to the TM1637 */
+    class GPIOExecutor;
+    /** Device provides access to the TM1637. Externally serialize calls on each
+     * instance, including destruction. Worker mode does not coordinate devices
+     * or processes accessing the same GPIO pins. */
     class Device {
     public:
         Device(int pinClk, int pinData);
         Device(int pinClk, int pinData, GPIOLib gpioLib);
+        Device(int pinClk, int pinData, GPIOLib gpioLib, const DeviceOptions& options);
         virtual ~Device();
         Device(const Device &device) = delete;   // copying is not supported
         Device& operator=(const Device &device) = delete;   // assignment is not supported
@@ -73,6 +84,12 @@ namespace tm1637 {
         void showIntegers(const int *integers);
         void showInteger(int pos, int integer);
         void showIntegerLiteral(int intLit, Radix radix = RadixDecimal);
+        /** Pause after preceding updates; queued in worker mode, blocking inline.
+         * Nonpositive durations do nothing. */
+        void wait(std::chrono::milliseconds duration);
+        /** Wait for previously accepted updates and pauses; rethrow worker errors.
+         * Inline execution has already completed, so this returns immediately. */
+        void flush();
 
     protected:
         // Protocol
@@ -86,9 +103,15 @@ namespace tm1637 {
 
         
     protected:
+        // Direct backend access is only supported in inline mode. Use the
+        // protocol helpers above to dispatch operations in either mode.
         std::unique_ptr<MGPIO> m_gpio;
         uint8_t m_data[4];
         uint8_t m_brightness;
         bool m_showColon;
+
+    private:
+        // Declared last so it joins and releases GPIO before backend storage dies.
+        std::unique_ptr<GPIOExecutor> m_executor;
     };
 }

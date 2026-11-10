@@ -14,18 +14,28 @@ PigpioBase::PigpioBase(int pinClk, int pinData) :
 }
 
 PigpioBase::~PigpioBase() {
-    dlclose(m_libHandle);
+    if (m_libHandle) {
+        dlclose(m_libHandle);
+    }
 }
 
 void PigpioBase::initialize() {
     dynLoadLib();
     initializeGpio();
+    m_initialized = true;
     setPinMode(m_pinClk, PI_OUTPUT);
     setPinMode(m_pinData, PI_OUTPUT);
 }
 
 void PigpioBase::deinitialize() {
-    deinitializeGpio();
+    if (m_initialized) {
+        m_initialized = false;
+        deinitializeGpio();
+    }
+    if (m_libHandle) {
+        dlclose(m_libHandle);
+        m_libHandle = nullptr;
+    }
 }
 
 void PigpioBase::setClock(PinDigitalState state) {
@@ -37,7 +47,7 @@ void PigpioBase::setData(PinDigitalState state) {
 }
 
 void PigpioBase::delayMicroseconds(int usecs) {
-    m_time_sleep(usecs / 1000000);
+    m_time_sleep(usecs / 1000000.0);
 }
 
 void PigpioBase::throwLibpigpiodReturnValue(const char *fn, int ret) {

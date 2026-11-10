@@ -41,8 +41,14 @@ void GPIOD::initialize() {
 }
 
 void GPIOD::deinitialize() {
-    m_gpio->deinitialize();
-    dlclose(m_libHandle);
+    if (m_gpio) {
+        m_gpio->deinitialize();
+        m_gpio.reset();
+    }
+    if (m_libHandle) {
+        dlclose(m_libHandle);
+        m_libHandle = nullptr;
+    }
 }
 
 void GPIOD::setClock(PinDigitalState state) {

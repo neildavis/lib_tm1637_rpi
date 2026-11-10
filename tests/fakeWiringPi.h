@@ -14,7 +14,7 @@ struct Call {
     std::thread::id thread;
 };
 
-const std::vector<Call>& calls();
+std::vector<Call> calls();
 void reset();
 void failAfterWrites(int count);
 

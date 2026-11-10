@@ -18,6 +18,8 @@ namespace tm1637 {
 
             void begin(const std::string &str);
             bool next();
+            // In worker mode this means all characters have been submitted;
+            // use Device::flush() to wait for display updates and queued pauses.
             bool finished() const;
             void reset();   // returns to beginning of current string
             void clear();   // clears the display and current string 

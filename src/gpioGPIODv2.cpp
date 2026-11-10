@@ -5,6 +5,9 @@
 #include <dlfcn.h>
 #include <stdexcept>
 #include <vector>
+#include <memory>
+#include <cerrno>
+#include <system_error>
 
 using namespace tm1637;
 
@@ -50,10 +53,11 @@ void GPIODv2::initialize() {
         "/dev/gpiochip0"    // Earlier RPi
     };
 
-    gpiod_chip *chip = NULL;
+    std::unique_ptr<gpiod_chip, decltype(m_gpiod_chip_close)>
+        chip(nullptr, m_gpiod_chip_close);
     for (std::vector<std::string>::iterator it = chip_paths.begin();
         it != chip_paths.end(); it++) {
-        chip = m_gpiod_chip_open(it->c_str());
+        chip.reset(m_gpiod_chip_open(it->c_str()));
         if (chip) {
             break;
         }
@@ -63,36 +67,56 @@ void GPIODv2::initialize() {
         throw std::runtime_error("ERROR: Unable to open any known gpiod chip");
     }
     // Create a line settings and set to OUTPUT mode and drive LOW
-    gpiod_line_settings* lineSettings = m_gpiod_line_settings_new();
-    m_gpiod_line_settings_set_direction(lineSettings, GPIOD_LINE_DIRECTION_OUTPUT);
-    m_gpiod_line_settings_set_output_value(lineSettings, GPIOD_LINE_VALUE_INACTIVE);
+    std::unique_ptr<gpiod_line_settings, decltype(m_gpiod_line_settings_free)>
+        lineSettings(m_gpiod_line_settings_new(), m_gpiod_line_settings_free);
+    if (!lineSettings) {
+        throw std::system_error(errno, std::generic_category(), "gpiod line settings");
+    }
+    if (m_gpiod_line_settings_set_direction(lineSettings.get(), GPIOD_LINE_DIRECTION_OUTPUT) < 0 ||
+        m_gpiod_line_settings_set_output_value(lineSettings.get(), GPIOD_LINE_VALUE_INACTIVE) < 0) {
+        throw std::system_error(errno, std::generic_category(), "gpiod configure output");
+    }
     // Create a line config for BOTH CLK & DATA lines
-    gpiod_line_config *lineConfig = m_gpiod_line_config_new();
+    std::unique_ptr<gpiod_line_config, decltype(m_gpiod_line_config_free)>
+        lineConfig(m_gpiod_line_config_new(), m_gpiod_line_config_free);
+    if (!lineConfig) {
+        throw std::system_error(errno, std::generic_category(), "gpiod line config");
+    }
     const unsigned int offsets[] = {m_pinClk, m_pinData};
-    m_gpiod_line_config_add_line_settings(lineConfig, offsets, 2, lineSettings);
+    if (m_gpiod_line_config_add_line_settings(lineConfig.get(), offsets, 2, lineSettings.get()) < 0) {
+        throw std::system_error(errno, std::generic_category(), "gpiod add line settings");
+    }
     // Create a line request config
-    gpiod_request_config *requestCfg = m_gpiod_request_config_new();
-    m_gpiod_request_config_set_consumer(requestCfg, kGPIODLineConsumer2);
+    std::unique_ptr<gpiod_request_config, decltype(m_gpiod_request_config_free)>
+        requestCfg(m_gpiod_request_config_new(), m_gpiod_request_config_free);
+    if (!requestCfg) {
+        throw std::system_error(errno, std::generic_category(), "gpiod request config");
+    }
+    m_gpiod_request_config_set_consumer(requestCfg.get(), kGPIODLineConsumer2);
     // Request the lines
-    m_lineRequest = m_gpiod_chip_request_lines(chip, requestCfg, lineConfig);
-
-    // Cleanup
-    m_gpiod_request_config_free(requestCfg);
-    m_gpiod_line_config_free(lineConfig);
-    m_gpiod_line_settings_free(lineSettings);
-    m_gpiod_chip_close(chip);
+    m_lineRequest = m_gpiod_chip_request_lines(chip.get(), requestCfg.get(), lineConfig.get());
+    if (!m_lineRequest) {
+        throw std::system_error(errno, std::generic_category(), "gpiod request lines");
+    }
 }
 
 void GPIODv2::deinitialize() {
-    m_gpiod_line_request_release(m_lineRequest);
+    if (m_lineRequest) {
+        m_gpiod_line_request_release(m_lineRequest);
+        m_lineRequest = nullptr;
+    }
 }
 
 void GPIODv2::setClock(PinDigitalState state) {
-    m_gpiod_line_request_set_value(m_lineRequest, m_pinClk, state);
+    if (m_gpiod_line_request_set_value(m_lineRequest, m_pinClk, state) < 0) {
+        throw std::system_error(errno, std::generic_category(), "gpiod set clock");
+    }
 }
 
 void GPIODv2::setData(PinDigitalState state) {
-    m_gpiod_line_request_set_value(m_lineRequest, m_pinData, state);
+    if (m_gpiod_line_request_set_value(m_lineRequest, m_pinData, state) < 0) {
+        throw std::system_error(errno, std::generic_category(), "gpiod set data");
+    }
 }
 
 void GPIODv2::delayMicroseconds(int usecs) {

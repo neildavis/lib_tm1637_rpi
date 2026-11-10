@@ -30,8 +30,10 @@ namespace tm1637 {
         int m_pinClk;
         int m_pinData;
         void *m_libHandle;
-        gpiod_line *m_lineClk;
-        gpiod_line *m_lineData;
-        gpiod_chip *m_chip;
+        gpiod_line *m_lineClk = nullptr;
+        gpiod_line *m_lineData = nullptr;
+        gpiod_chip *m_chip = nullptr;
+        bool m_clockRequested = false;
+        bool m_dataRequested = false;
    };
 }

@@ -23,17 +23,19 @@ WiringPi::WiringPi(int pinClk, int pinData, bool useBCM)
 void WiringPi::initialize() {
     dynLoadWiringPiLib();
 
-    if (m_bcm) {
-        m_wiringPiSetupGpio();
-    } else {
-        m_wiringPiSetup();
+    const int result = m_bcm ? m_wiringPiSetupGpio() : m_wiringPiSetup();
+    if (result < 0) {
+        throw std::runtime_error("WiringPi setup failed");
     }
     m_pinMode(m_pinClk, OUTPUT);
     m_pinMode(m_pinData, OUTPUT);
 }
 
 void WiringPi::deinitialize() {
-    dlclose(m_libHandle);
+    if (m_libHandle) {
+        dlclose(m_libHandle);
+        m_libHandle = nullptr;
+    }
 }
 
 void WiringPi::setClock(PinDigitalState state) {
@@ -55,7 +57,7 @@ void WiringPi::dynLoadWiringPiLib() {
     if (NULL == m_wiringPiSetup) { throw std::runtime_error(dlerror()); }
     m_wiringPiSetupGpio = reinterpret_cast<int(*)()>(dlsym(m_libHandle, "wiringPiSetupGpio"));
     if (NULL == m_wiringPiSetupGpio) { throw std::runtime_error(dlerror()); }
-    m_pinMode = reinterpret_cast<int(*)(int, int)>(dlsym(m_libHandle, "pinMode"));
+    m_pinMode = reinterpret_cast<void(*)(int, int)>(dlsym(m_libHandle, "pinMode"));
     if (NULL == m_pinMode) { throw std::runtime_error(dlerror()); }
     m_digitalWrite = reinterpret_cast<void(*)(int, int)>(dlsym(m_libHandle, "digitalWrite"));
     if (NULL == m_digitalWrite) { throw std::runtime_error(dlerror()); }

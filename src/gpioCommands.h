@@ -22,6 +22,10 @@ struct GPIOCommand {
 class GPIOCommandBatch : public MGPIO {
 public:
     explicit GPIOCommandBatch(std::size_t capacity = 0);
+    GPIOCommandBatch(const GPIOCommandBatch&) = delete;
+    GPIOCommandBatch& operator=(const GPIOCommandBatch&) = delete;
+    GPIOCommandBatch(GPIOCommandBatch&&) noexcept;
+    GPIOCommandBatch& operator=(GPIOCommandBatch&&) noexcept;
 
     void initialize() override;
     void deinitialize() override;

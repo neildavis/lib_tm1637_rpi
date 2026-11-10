@@ -3,7 +3,6 @@
 #include <tm1637_digits.h>
 #include <iostream>
 #include <chrono>
-#include <thread>
 #include <boost/program_options.hpp>
 
 namespace po = boost::program_options;
@@ -74,7 +73,7 @@ int main(int argc, char**argv) {
     sayer.begin(message);
     for (int i = 0; i < count; i++) {
         while (sayer.next()) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(delay_ms));
+            tm1637->wait(std::chrono::milliseconds(delay_ms));
         }
         sayer.reset();
     }

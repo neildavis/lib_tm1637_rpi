@@ -19,11 +19,11 @@ namespace tm1637 {
         // These are func pointers we assign from the symbols in libwiringPi.so
         int (*m_wiringPiSetup)();
         int (*m_wiringPiSetupGpio)();
-        int (*m_pinMode)(int pin, int mode);
+        void (*m_pinMode)(int pin, int mode);
         void (*m_digitalWrite)(int pin, int value);
         void (*m_delayMicroseconds)(unsigned int howLong);
     private:
-        void *m_libHandle;
+        void *m_libHandle = nullptr;
         int m_pinClk;
         int m_pinData;
         bool m_bcm;

@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.9)
 
 set(lib-name TM1637Pi)
-set(lib-version 1.5)
+set(lib-version 2.0)
 set(say-name tm1637_say)
 
 # Project
@@ -27,6 +27,15 @@ file(GLOB_RECURSE public_inc_files "${lib_inc_base}/*.h")
 
 # Library target
 add_library(${lib-name} ${lib_src_files})
+set(THREADS_PREFER_PTHREAD_FLAG TRUE)
+find_package(Threads REQUIRED)
+target_link_libraries(${lib-name} PRIVATE Threads::Threads ${CMAKE_DL_LIBS})
+# Export the POSIX compiler/linker flag to non-CMake consumers as well, even on
+# systems where pthread symbols are provided directly by libc.
+set(pkg_thread_flags "${CMAKE_THREAD_LIBS_INIT}")
+if(CMAKE_USE_PTHREADS_INIT)
+    set(pkg_thread_flags "-pthread")
+endif()
 
 # Include dirs
 target_include_directories(${lib-name} PUBLIC ${lib_inc_base})
@@ -35,7 +44,7 @@ target_include_directories(${lib-name} PRIVATE ${lib_cpp_base})
 set_target_properties(${lib-name} PROPERTIES PUBLIC_HEADER "${public_inc_files}")
 set_target_properties(${lib-name} PROPERTIES VERSION ${PROJECT_VERSION})
 # SOVERSION
-set_target_properties(${lib-name} PROPERTIES SOVERSION 1)
+set_target_properties(${lib-name} PROPERTIES SOVERSION 2)
 
 # Say executable source code location
 set(say_cpp_base ./say)

@@ -26,6 +26,9 @@ GPIOCommandBatch::GPIOCommandBatch(std::size_t capacity) {
     m_commands.reserve(capacity);
 }
 
+GPIOCommandBatch::GPIOCommandBatch(GPIOCommandBatch&&) noexcept = default;
+GPIOCommandBatch& GPIOCommandBatch::operator=(GPIOCommandBatch&&) noexcept = default;
+
 void GPIOCommandBatch::initialize() {
     append(GPIOCommand::Kind::Initialize);
 }

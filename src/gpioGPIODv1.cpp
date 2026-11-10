@@ -5,6 +5,8 @@
 #include <dlfcn.h>
 #include <stdexcept>
 #include <vector>
+#include <cerrno>
+#include <system_error>
 
 using namespace tm1637;
 
@@ -33,25 +35,55 @@ void GPIODv1::initialize() {
         }
     }
 
+    if (!m_chip) {
+        throw std::runtime_error("Unable to open any known gpiod chip");
+    }
     m_lineClk = m_gpiod_chip_get_line(m_chip, m_pinClk);
+    if (!m_lineClk) {
+        throw std::system_error(errno, std::generic_category(), "gpiod clock line");
+    }
     m_lineData = m_gpiod_chip_get_line(m_chip, m_pinData);
-    m_gpiod_line_request_output(m_lineClk,  kGPIODLineConsumer1, 0); // open CLK as LOW
-    m_gpiod_line_request_output(m_lineData, kGPIODLineConsumer1, 0); // open DIO as LOW
+    if (!m_lineData) {
+        throw std::system_error(errno, std::generic_category(), "gpiod data line");
+    }
+    if (m_gpiod_line_request_output(m_lineClk, kGPIODLineConsumer1, 0) < 0) {
+        throw std::system_error(errno, std::generic_category(), "gpiod request clock");
+    }
+    m_clockRequested = true;
+    if (m_gpiod_line_request_output(m_lineData, kGPIODLineConsumer1, 0) < 0) {
+        throw std::system_error(errno, std::generic_category(), "gpiod request data");
+    }
+    m_dataRequested = true;
 
 }
 
 void GPIODv1::deinitialize() {
-    m_gpiod_line_release(m_lineClk);
-    m_gpiod_line_release(m_lineData);
-    m_gpiod_chip_close(m_chip);
+    if (m_clockRequested) {
+        m_gpiod_line_release(m_lineClk);
+        m_clockRequested = false;
+    }
+    if (m_dataRequested) {
+        m_gpiod_line_release(m_lineData);
+        m_dataRequested = false;
+    }
+    if (m_chip) {
+        m_gpiod_chip_close(m_chip);
+        m_chip = nullptr;
+    }
+    m_lineClk = nullptr;
+    m_lineData = nullptr;
 }
 
 void GPIODv1::setClock(PinDigitalState state) {
-    m_gpiod_line_set_value(m_lineClk, state);
+    if (m_gpiod_line_set_value(m_lineClk, state) < 0) {
+        throw std::system_error(errno, std::generic_category(), "gpiod set clock");
+    }
 }
 
 void GPIODv1::setData(PinDigitalState state) {
-    m_gpiod_line_set_value(m_lineData, state);
+    if (m_gpiod_line_set_value(m_lineData, state) < 0) {
+        throw std::system_error(errno, std::generic_category(), "gpiod set data");
+    }
 }
 
 void GPIODv1::delayMicroseconds(int usecs) {

@@ -28,8 +28,9 @@ namespace tm1637 {
         void (*m_time_sleep)(double seconds);
     protected:
         // Member data
-        void *m_libHandle;
+        void *m_libHandle = nullptr;
         unsigned m_pinClk;
         unsigned m_pinData;
+        bool m_initialized = false;
    };
 }

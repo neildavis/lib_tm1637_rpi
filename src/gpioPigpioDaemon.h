@@ -22,6 +22,6 @@ namespace tm1637 {
         int (*m_set_mode)(int pi, unsigned gpio, unsigned mode);
         int (*m_gpio_write)(int pi, unsigned gpio, unsigned level);
     private:
-        int m_pi;
+        int m_pi = -1;
    };
 }

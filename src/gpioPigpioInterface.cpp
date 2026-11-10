@@ -13,6 +13,7 @@ PigpioInterface::PigpioInterface(int pinClk, int pinData) :
 
 void PigpioInterface::dynLoadLib() {
     m_libHandle = dlopen(kPigpioLibSoName, RTLD_LAZY);
+    if (!m_libHandle) { throw std::runtime_error(dlerror()); }
     m_time_sleep = reinterpret_cast<void (*)(double)>(dlsym(m_libHandle, "time_sleep"));
     if (NULL == m_time_sleep) { throw std::runtime_error(dlerror()); }
     m_gpioInitialise = reinterpret_cast<int (*)()>(dlsym(m_libHandle, "gpioInitialise"));

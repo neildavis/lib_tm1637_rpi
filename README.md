@@ -27,6 +27,7 @@ to any GPIO library at build time. The GPIO library is dynamically loaded at run
 * Independent control over the 'colon' character.
 * Independent control over the display brightness.
 * APIs to show numerical literals in both decimal (e.g. `1234`) & hexadecimal (e.g. `0xabcd`).
+* Optional worker-thread execution with FIFO updates and queued display pauses.
 
 ## Installation
 
@@ -177,16 +178,65 @@ g++ -Wall -std=c++14 myprogram.cpp -o myprogram $(pkg-config --libs --cflags lib
 The public API is included in the public header file [`tm1637.h`](./inc/tm1637.h)
 which will be installed into the system default includes directory (e.g. `/usr/local/include`).
 
-Display updates are recorded as batches of GPIO operations and delays. Each complete
-batch is executed synchronously on the calling thread before the display method
-returns. Initialization and deinitialization also run on the calling thread;
-this version does not create a worker thread.
+Existing constructors execute synchronously on the calling thread. Each display
+method finishes transmitting its update before returning. `wait(duration)` then
+pauses that thread for the requested number of milliseconds.
+
+To schedule updates on a worker thread, select `ExecutionMode::Worker`:
+
+```cpp
+tm1637::DeviceOptions options;
+options.execution = tm1637::ExecutionMode::Worker;
+tm1637::Device display(23, 24, tm1637::GpioGPIOD, options);
+
+display.showIntegerLiteral(1234);
+display.wait(std::chrono::milliseconds{500});
+display.showIntegerLiteral(5678);
+display.wait(std::chrono::milliseconds{500});
+display.clear();
+display.flush();
+```
+
+Worker mode appends complete updates and pauses to an unbounded FIFO queue. It
+preserves every accepted request and never preempts an executing update. Submitted
+values are copied into commands, so input arrays need not remain alive. Queue
+allocation failures are reported to the submitting caller; previously accepted
+work remains intact. Callers should avoid producing an unlimited backlog.
+
+`wait(std::chrono::milliseconds)` schedules a pause after preceding updates in worker
+mode; zero and negative durations do nothing. Pauses use standard C++ sleeping,
+separately from the backend's GPIO protocol delays. Scheduling may extend the
+requested interval; this is not a real-time timing guarantee.
+
+`flush()` blocks until all work accepted before that call has finished, including
+an executing update and queued pauses. It returns immediately in synchronous mode.
+With a worker-backed device, `Sayer::finished()` means all characters have been
+submitted; call the device's `flush()` to establish completion.
+
+Construction waits for initialization to succeed. Backend creation, initialization,
+GPIO calls, protocol waits, deinitialization, and backend destruction all execute
+on the worker in worker mode. Normal destruction drains accepted updates and pauses
+before cleanup and joining the worker; long queued pauses also delay destruction.
+There is no cancellation or timed shutdown. A worker failure discards remaining
+work and is rethrown by `flush()` and subsequent submissions; recreate the device to
+recover. Destruction is non-throwing and does not report cleanup errors.
+
+Externally serialize calls to each `Device`, including destruction. Worker mode
+does not make concurrent public API calls safe and does not coordinate separate
+devices or processes sharing GPIO pins. Use one active owner per physical display.
+Protected protocol helpers follow the selected execution mode; subclasses must
+only access `m_gpio` directly in synchronous mode.
+
+Version **2.0** uses **SOVERSION 2** (`libTM1637Pi.so.2`). Existing public source
+usage remains supported, but applications must rebuild and relink to upgrade from
+version 1; binary compatibility with `libTM1637Pi.so.1` is not retained.
 
 ### Hardware-free tests
 
 The optional tests use a recording backend instead of accessing GPIO hardware.
-They compare protocol traces captured before the command-batch refactor and check
-batch ordering, argument ownership, synchronous execution, and failure handling.
+They compare original protocol traces in both execution modes and check FIFO
+ordering, argument ownership, queued pauses, completion, allocation and backend
+failures, partial initialization cleanup, and thread ownership of the lifecycle.
 
 ```sh
 cmake -S . -B build/tests -DBUILD_TESTING=ON
@@ -210,6 +260,10 @@ cd example
 ## tm1637_say utility
 
 A simple utility using `lib_tm1637_rpi` to scroll some text on a [TM1637](https://datasheetspdf.com/pdf-file/788613/TitanMicro/TM1637/1) display is included as part of the build. The cmake `install` action will also install it into the default binary installation directory which should be already included in your `$PATH`
+
+The utility always uses synchronous execution and `Device::wait()` for character
+intervals. It completes scrolling, clears the display, and releases GPIO before
+normal exit. Concurrent utility instances accessing the same pins remain unsupported.
 
 ### tm1637_say usage
 
