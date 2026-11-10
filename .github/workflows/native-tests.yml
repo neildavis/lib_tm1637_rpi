@@ -1,0 +1,41 @@
+name: Native tests
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  native-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+
+      - name: Install native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake libboost-program-options-dev
+
+      - name: Configure shared Debug build
+        run: |
+          cmake -S . -B build/native-tests \
+            -DBUILD_TESTING=ON \
+            -DBUILD_SHARED_LIBS=ON \
+            -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build
+        run: cmake --build build/native-tests --parallel 2
+
+      - name: Run hardware-free tests
+        run: |
+          ctest --test-dir build/native-tests \
+            --output-on-failure --no-tests=error
