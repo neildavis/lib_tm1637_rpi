@@ -9,7 +9,7 @@ project(${lib-name} VERSION ${lib-version} DESCRIPTION "TM1637 driver for Raspbe
 
 include(GNUInstallDirs)
 
-# We require C++11
+# We require C++14
 set (CMAKE_CXX_STANDARD 14)
 
 # Default to building shared lib (.so) instead of static lib (.a) if not set on cmd line
@@ -48,6 +48,12 @@ set(Boost_USE_STATIC_LIBS ON)  # Statically link to Boost (no SOVERSION support 
 find_package(Boost CONFIG COMPONENTS program_options REQUIRED)
 # Link say executable with library and Boost boost_program_options
 target_link_libraries(${say-name} ${lib-name} dl Boost::program_options)
+
+option(BUILD_TESTING "Build hardware-free tests" OFF)
+include(CTest)
+if(BUILD_TESTING)
+    add_subdirectory(tests)
+endif()
 
 
 # Installation of lib & headers

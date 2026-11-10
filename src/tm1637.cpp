@@ -3,6 +3,7 @@
 #include "gpioGPIOD.h"
 #include "gpioPigpioInterface.h"
 #include "gpioPigpioDaemon.h"
+#include "gpioCommands.h"
 #include <memory>
 
 using namespace tm1637;
@@ -48,6 +49,13 @@ Device::Device(int pinClk, int pinData, GPIOLib gpioLib)
     : m_data{0,0,0,0}
     , m_brightness(CMD_DISPLAY_ON | BRIGHTNESS_MAX),
     m_showColon(false) {
+    // Finish allocating the startup batch before constructing a backend whose
+    // destructor may require initialize() to have loaded its shared library.
+    GPIOCommandBatch startup(3);
+    startup.initialize();
+    startup.setClock(PIN_LOW);
+    startup.setData(PIN_LOW);
+
     switch (gpioLib) {
     case GpioWiringPi:
         m_gpio = std::make_unique<WiringPi>(pinClk, pinData, false);
@@ -66,13 +74,13 @@ Device::Device(int pinClk, int pinData, GPIOLib gpioLib)
         m_gpio = std::make_unique<GPIOD>(pinClk, pinData);
         break;
     }
-    m_gpio->initialize();
-    m_gpio->setClock(PIN_LOW);
-    m_gpio->setData(PIN_LOW);
+    startup.drain(*m_gpio);
 }
 
 Device::~Device() {
-    m_gpio->deinitialize();
+    // Shutdown is a single-command sequence; avoid allocating in the destructor.
+    const GPIOCommand shutdown{GPIOCommand::Kind::Deinitialize, 0};
+    shutdown.execute(*m_gpio);
 }
 
 void Device::displayOff() {
@@ -168,64 +176,88 @@ void Device::showIntegerLiteral(int intLit, Radix radix) {
     showCurrentData();
 }
 
-void Device::start() const {
-    m_gpio->setClock(PIN_HIGH);
-    m_gpio->setData(PIN_HIGH);
-    m_gpio->delayMicroseconds(TM1637_DELAY_MS);
-    m_gpio->setData(PIN_LOW);
-    m_gpio->delayMicroseconds(TM1637_DELAY_MS);
-    m_gpio->setClock(PIN_LOW);
+namespace {
+// Use these helpers with either the real backend or a recording command batch.
+void protocolStart(MGPIO& gpio) {
+    gpio.setClock(PIN_HIGH);
+    gpio.setData(PIN_HIGH);
+    gpio.delayMicroseconds(TM1637_DELAY_MS);
+    gpio.setData(PIN_LOW);
+    gpio.delayMicroseconds(TM1637_DELAY_MS);
+    gpio.setClock(PIN_LOW);
 }
 
-void Device::stop() const {
-    m_gpio->setData(PIN_LOW);
-    m_gpio->setClock(PIN_HIGH);
-    m_gpio->delayMicroseconds(TM1637_DELAY_MS);
-    m_gpio->setData(PIN_HIGH);
-    m_gpio->delayMicroseconds(TM1637_DELAY_MS);
-    m_gpio->setData(PIN_LOW);
-    m_gpio->delayMicroseconds(TM1637_DELAY_MS);
-    m_gpio->setClock(PIN_LOW);
+void protocolStop(MGPIO& gpio) {
+    gpio.setData(PIN_LOW);
+    gpio.setClock(PIN_HIGH);
+    gpio.delayMicroseconds(TM1637_DELAY_MS);
+    gpio.setData(PIN_HIGH);
+    gpio.delayMicroseconds(TM1637_DELAY_MS);
+    gpio.setData(PIN_LOW);
+    gpio.delayMicroseconds(TM1637_DELAY_MS);
+    gpio.setClock(PIN_LOW);
 }
 
-void Device::br() const { 
-    stop();
-    start(); 
+void protocolBreak(MGPIO& gpio) {
+    protocolStop(gpio);
+    protocolStart(gpio);
 }
 
-void Device::writeByte(uint8_t data) const {
+void protocolWriteByte(MGPIO& gpio, uint8_t data) {
     // Write bits in order LSB->MSB
     for (int i = 0; i < 8; i++) {
-        m_gpio->setClock(PIN_LOW); // CLK falling edge for the previous iteration
-        m_gpio->delayMicroseconds(TM1637_DELAY_MS);
-        m_gpio->setData(data & 0x1 ? PIN_HIGH : PIN_LOW);
-        m_gpio->setClock(PIN_HIGH);
-        m_gpio->delayMicroseconds(TM1637_DELAY_MS);
+        gpio.setClock(PIN_LOW); // CLK falling edge for the previous iteration
+        gpio.delayMicroseconds(TM1637_DELAY_MS);
+        gpio.setData(data & 0x1 ? PIN_HIGH : PIN_LOW);
+        gpio.setClock(PIN_HIGH);
+        gpio.delayMicroseconds(TM1637_DELAY_MS);
         data >>= 1;
     }
     // This is the 8th bit CLK falling edge
-    m_gpio->setClock(PIN_LOW);
+    gpio.setClock(PIN_LOW);
     // Delay for ACK
-    m_gpio->delayMicroseconds(TM1637_DELAY_MS);
-    m_gpio->setClock(PIN_HIGH);
-    m_gpio->delayMicroseconds(TM1637_DELAY_MS);
-    m_gpio->setClock(PIN_LOW);
-   
-     m_gpio->setData(PIN_LOW);
+    gpio.delayMicroseconds(TM1637_DELAY_MS);
+    gpio.setClock(PIN_HIGH);
+    gpio.delayMicroseconds(TM1637_DELAY_MS);
+    gpio.setClock(PIN_LOW);
+
+    gpio.setData(PIN_LOW);
+}
+}
+
+// Preserve immediate execution for subclasses using the protected helpers.
+void Device::start() const {
+    protocolStart(*m_gpio);
+}
+
+void Device::stop() const {
+    protocolStop(*m_gpio);
+}
+
+void Device::br() const {
+    protocolBreak(*m_gpio);
+}
+
+void Device::writeByte(uint8_t data) const {
+    protocolWriteByte(*m_gpio, data);
 }
 
 void Device::showCurrentData() {
     applyColonMask();
-    start();
-    writeByte(ADDR_AUTO);
-    br();
-    writeByte(ADDR_C0H);
+    // A full update currently takes 364 operations. Reserve space up front so
+    // recording normally needs just one allocation; the batch can grow if needed.
+    GPIOCommandBatch commands(364);
+    protocolStart(commands);
+    protocolWriteByte(commands, ADDR_AUTO);
+    protocolBreak(commands);
+    protocolWriteByte(commands, ADDR_C0H);
     for (int i = 0; i < 4; i++) {
-        writeByte(m_data[i]);
+        protocolWriteByte(commands, m_data[i]);
     }
-    br();
-    writeByte(m_brightness);
-    stop();
+    protocolBreak(commands);
+    protocolWriteByte(commands, m_brightness);
+    protocolStop(commands);
+    commands.drain(*m_gpio);
 }
 
 void Device::showDigitAtPos(int pos) {
@@ -236,14 +268,16 @@ void Device::showDigitAtPos(int pos) {
         // Retain colon mask
         applyColonMask();
     }
-    start();
-    writeByte(ADDR_FIXED);
-    br();
-    writeByte(ADDR_C0H | (uint8_t)pos);
-    writeByte(m_data[pos]);
-    br();
-    writeByte(m_brightness);
-    stop();
+    GPIOCommandBatch commands(226); // Complete single-digit update.
+    protocolStart(commands);
+    protocolWriteByte(commands, ADDR_FIXED);
+    protocolBreak(commands);
+    protocolWriteByte(commands, ADDR_C0H | (uint8_t)pos);
+    protocolWriteByte(commands, m_data[pos]);
+    protocolBreak(commands);
+    protocolWriteByte(commands, m_brightness);
+    protocolStop(commands);
+    commands.drain(*m_gpio);
 }
 
 void Device::applyColonMask() {

@@ -177,6 +177,23 @@ g++ -Wall -std=c++14 myprogram.cpp -o myprogram $(pkg-config --libs --cflags lib
 The public API is included in the public header file [`tm1637.h`](./inc/tm1637.h)
 which will be installed into the system default includes directory (e.g. `/usr/local/include`).
 
+Display updates are recorded as batches of GPIO operations and delays. Each complete
+batch is executed synchronously on the calling thread before the display method
+returns. Initialization and deinitialization also run on the calling thread;
+this version does not create a worker thread.
+
+### Hardware-free tests
+
+The optional tests use a recording backend instead of accessing GPIO hardware.
+They compare protocol traces captured before the command-batch refactor and check
+batch ordering, argument ownership, synchronous execution, and failure handling.
+
+```sh
+cmake -S . -B build/tests -DBUILD_TESTING=ON
+cmake --build build/tests
+ctest --test-dir build/tests --output-on-failure
+```
+
 ### Example
 
 See the [example](./example/tm1637_example.cpp) code in the `example` directory for a demonstration of the library's features. The example can be built and run with the following commands from the top level dir of this repo:
